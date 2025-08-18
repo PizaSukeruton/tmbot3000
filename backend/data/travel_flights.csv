@@ -1,3 +1,9 @@
 show_id,date,airline,flight_number,departure_city,arrival_city,departure_time,arrival_time,departure_timezone,arrival_timezone,confirmation
 #605002,,Qantas,QF432,Melbourne,Sydney,2025-08-21T09:00:00,2025-08-21T10:35:00,Australia/Melbourne,Australia/Sydney,ABC123
 #605003,,Virgin Australia,VA319,Sydney,Brisbane,2025-08-24T14:00:00,2025-08-24T15:30:00,Australia/Sydney,Australia/Brisbane,DEF456
+#605004,,Jetstar,JQ762,Brisbane,Adelaide,2025-08-26T10:00:00,2025-08-26T12:00:00,Australia/Brisbane,Australia/Adelaide,GHI789
+#605005,,Qantas,QF581,Adelaide,Perth,2025-08-28T08:00:00,2025-08-28T10:30:00,Australia/Adelaide,Australia/Perth,JKL012
+#605006,,Virgin Australia,VA827,Perth,Melbourne,2025-08-31T23:00:00,2025-09-01T06:00:00,Australia/Perth,Australia/Melbourne,MNO345
+#605008,,Air New Zealand,NZ104,Sydney,Auckland,2025-09-04T16:00:00,2025-09-04T21:00:00,Australia/Sydney,Pacific/Auckland,PQR678
+#605009,,Air New Zealand,NZ447,Auckland,Wellington,2025-09-06T13:00:00,2025-09-06T14:05:00,Pacific/Auckland,Pacific/Auckland,STU901
+#605010,,Singapore Airlines,SQ218,Wellington,Singapore,2025-09-09T09:00:00,2025-09-09T16:00:00,Pacific/Auckland,Asia/Singapore,VWX234

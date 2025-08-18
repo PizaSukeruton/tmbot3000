@@ -1,0 +1,11 @@
+show_id,category,note,priority,created_by
+#605001,technical,Stage dimensions 12m x 8m - tight for full production,high,Production Manager
+#605001,hospitality,Artist requests titanium water bottles in dressing room,medium,Tour Manager
+#605002,venue,No pyro allowed - heritage building,critical,Venue Manager
+#605002,technical,Acoustic treatment needed - 3 second reverb,high,Sound Engineer
+#605003,logistics,Loading dock 200m from stage - allow extra time,medium,Crew Chief
+#605003,hospitality,Catering must be nut-free - crew allergies,high,Tour Manager
+#605005,technical,Power limited to 100A 3-phase,critical,Venue Tech
+#605007,production,Live broadcast - no strobe lights,critical,Production Manager
+#605008,logistics,Customs clearance required - allow 3 hours,high,Tour Manager
+#605010,hospitality,Halal catering required,high,Tour Manager

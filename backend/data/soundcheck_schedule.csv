@@ -1,8 +1,28 @@
 show_id,time,activity,notes
-#605001,12:00,Load In,Crew only
-#605001,14:00,Line Check,
-#605001,15:30,Band Soundcheck,Full band
-#605001,16:30,Dinner Break,
-#605001,19:00,Doors Open,
-#605001,20:00,Show Time,
+#605001,12:00,Load In,Crew only - 4 trucks
+#605001,13:00,Rigging,Flying points check required
+#605001,14:00,Line Check,Backline setup
+#605001,15:30,Band Soundcheck,Full band - 45 mins
+#605001,16:15,Support Act Soundcheck,30 mins allocated
+#605001,16:45,Changeover,Reset for main act
+#605001,17:00,Dinner Break,Catering in green room
+#605001,18:00,Security Briefing,All crew mandatory
+#605001,18:30,Doors Prep,Final venue check
+#605001,19:00,Doors Open,General admission
+#605001,19:30,Support Act,30 minute set
+#605001,20:00,Show Time,Main act
+#605001,22:30,Show End,Approximate
+#605001,23:00,Curfew,Hard stop - venue requirement
+#605001,23:30,Band to Hotel,Transport ready at stage door
+#605001,00:00,Load Out,Crew only - 2 hour window
 #605001,02:00,Crew to Hotel,Transport at loading dock
+#605002,11:00,Load In,Opera House restrictions apply
+#605002,12:00,Stage Setup,Union crew only
+#605002,14:00,Line Check,Monitor positions critical
+#605002,15:00,Band Soundcheck,Acoustic considerations
+#605002,16:00,Media Soundcheck,Press photos allowed
+#605002,17:00,Clear Stage,Venue requirement
+#605002,18:30,Doors Open,VIP pre-show 6pm
+#605002,19:30,Show Time,No support act
+#605002,22:00,Show End,No encore allowed
+#605002,22:30,Load Out,Quiet restrictions
