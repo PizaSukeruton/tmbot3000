@@ -1,0 +1,20 @@
+{
+  "name": "tmbot3000",
+  "version": "1.0.0",
+  "description": "Tour Management Chatbot",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "NODE_ENV=development node backend/server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "ws": "^8.16.0",
+    "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.3.1"
+  }
+}

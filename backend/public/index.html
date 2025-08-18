@@ -1,0 +1,151 @@
+<!-- backend/public/index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TmBot3000 – Demo Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    header { padding: 12px 16px; border-bottom: 1px solid #ccc4; }
+    main { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+    #toolbar { display: flex; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #ccc4; align-items: center; }
+    #toolbar input { padding: 6px 8px; border: 1px solid #ccc6; border-radius: 6px; min-width: 10ch; }
+    #chat { padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+    .msg { padding: 10px 12px; border-radius: 10px; max-width: 70ch; }
+    .user { align-self: flex-end; background: #2563eb22; border: 1px solid #2563eb55; }
+    .bot  { align-self: flex-start; background: #10b98122; border: 1px solid #10b98155; }
+    .meta { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+    #composer { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 16px; border-top: 1px solid #ccc4; }
+    #composer input[type="text"] { padding: 10px; border: 1px solid #ccc6; border-radius: 8px; }
+    #sendBtn { padding: 10px 14px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; }
+    #sendBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+    small.hint { opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <strong>TmBot3000</strong> <small class="hint">– demo chat</small>
+    </header>
+
+    <div id="toolbar">
+      <label>Member ID:
+        <input id="memberId" placeholder="#700001" />
+      </label>
+      <label>Session ID:
+        <input id="sessionId" placeholder="(auto)" />
+      </label>
+      <span id="status">🔴 Disconnected</span>
+    </div>
+
+    <div id="chat"></div>
+
+    <div id="composer">
+      <input id="messageInput" type="text" placeholder="Ask something… e.g., When is soundcheck at The Forum?" />
+      <button id="sendBtn">Send</button>
+    </div>
+  </main>
+
+  <script>
+    const chatEl = document.getElementById('chat');
+    const memberIdEl = document.getElementById('memberId');
+    const sessionIdEl = document.getElementById('sessionId');
+    const inputEl = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusEl = document.getElementById('status');
+
+    // Use wss in HTTPS, ws in HTTP
+    const wsUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws';
+    let ws;
+
+    function appendMessage(role, text, meta) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+      div.textContent = text;
+      if (meta) {
+        const m = document.createElement('div');
+        m.className = 'meta';
+        m.textContent = meta;
+        div.appendChild(m);
+      }
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function setStatus(isOpen) {
+      statusEl.textContent = isOpen ? '🟢 Connected' : '🔴 Disconnected';
+      sendBtn.disabled = !isOpen;
+    }
+
+    function connect() {
+      ws = new WebSocket(wsUrl);
+
+      ws.addEventListener('open', () => setStatus(true));
+      ws.addEventListener('close', () => setStatus(false));
+      ws.addEventListener('error', () => setStatus(false));
+
+      ws.addEventListener('message', (evt) => {
+        try {
+          const msg = JSON.parse(evt.data);
+          if (msg.type === 'response') {
+            if (msg.sessionId && !sessionIdEl.value) sessionIdEl.value = msg.sessionId;
+            const meta = msg.intent ? `intent: ${msg.intent}` : '';
+            appendMessage('bot', msg.content || '', meta);
+          } else if (msg.type === 'error') {
+            appendMessage('bot', `⚠️ ${msg.error}`);
+          }
+        } catch {
+          appendMessage('bot', '⚠️ Invalid message from server');
+        }
+      });
+    }
+
+    function sendMessage() {
+      const memberId = memberIdEl.value.trim();
+      const sessionId = sessionIdEl.value.trim() || undefined;
+      const content = inputEl.value.trim();
+      if (!memberId || !content) {
+        alert('Enter memberId and a message first.');
+        return;
+      }
+      const payload = { type: 'message', memberId, content };
+      if (sessionId) payload.sessionId = sessionId;
+
+      appendMessage('user', content);
+      inputEl.value = '';
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+      } else {
+        // HTTP fallback
+        fetch('/api/chat/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memberId, sessionId, content }),
+        })
+        .then(r => r.json())
+        .then(r => {
+          if (r.ok) {
+            if (r.sessionId && !sessionIdEl.value) sessionIdEl.value = r.sessionId;
+            appendMessage('bot', r.response || '', r.intent ? `intent: ${r.intent}` : '');
+          } else {
+            appendMessage('bot', `⚠️ ${r.error || 'Error'}`);
+          }
+        })
+        .catch(() => appendMessage('bot', '⚠️ Network error'));
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Auto-connect WS
+    connect();
+  </script>
+</body>
+</html>
+

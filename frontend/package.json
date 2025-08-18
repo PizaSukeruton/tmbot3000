@@ -1,0 +1,14 @@
+{
+  "name": "tmbot3000-frontend",
+  "version": "1.0.0",
+  "description": "TmBot3000 Frontend",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  }
+}

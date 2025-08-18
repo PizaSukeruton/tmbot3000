@@ -1,0 +1,4 @@
+show_id,date,type,pickup_time,pickup_location
+#605001,,Sprinter Van,11:00,Hotel Lobby
+#605002,,Bus,10:00,Hotel Lobby
+#605003,,Sprinter Van,11:30,Hotel Lobby

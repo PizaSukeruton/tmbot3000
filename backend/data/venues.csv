@@ -1,0 +1,4 @@
+venue_id,name,address_street,address_city,address_state,address_zip,address_country,capacity,phone,website,parking_info,load_in_info,contact_name,contact_email,contact_phone
+#606001,The Forum,154 Flinders St,Melbourne,VIC,3000,Australia,1500,+61 3 9299 9800,https://www.forummelbourne.com.au,Street parking and nearby lots,Loading dock on Russell St,John Smith,john@forummelbourne.com.au,+61 3 9299 9801
+#606002,Sydney Opera House,Bennelong Point,Sydney,NSW,2000,Australia,2679,+61 2 9250 7111,https://www.sydneyoperahouse.com,Underground parking available,Stage door on Macquarie St,Sarah Johnson,sarah@sydneyoperahouse.com,+61 2 9250 7200
+#606003,Brisbane Entertainment Centre,Melaleuca Dr,Boondall,Brisbane,QLD,4034,Australia,13500,+61 7 3265 8111,https://www.brisent.com.au,Large parking lot on site,Loading dock at rear,Mike Chen,mike@brisent.com.au,+61 7 3265 8200

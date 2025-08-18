@@ -1,0 +1,4 @@
+show_id,date,venue_id,venue_name,city,state,country,doors_time,show_time,soundcheck_time,load_in_time,ticket_status,timezone
+#605001,2025-08-20,#606001,The Forum,Melbourne,VIC,Australia,19:00,20:00,15:30,12:00,On Sale,Australia/Melbourne
+#605002,2025-08-22,#606002,Sydney Opera House,Sydney,NSW,Australia,18:30,19:30,15:00,11:00,Low,Australia/Sydney
+#605003,2025-08-25,#606003,Brisbane Entertainment Centre,Brisbane,QLD,Australia,19:00,20:00,16:00,12:30,Sold Out,Australia/Brisbane
