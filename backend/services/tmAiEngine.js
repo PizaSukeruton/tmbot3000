@@ -397,6 +397,7 @@ class TmAiEngine {
         entities: { city, count: target.length }
       };
     } catch (err) {
+      console.error('[ERROR][merch_sales]', err);
       return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'merch_sales' } };
     }
   }
