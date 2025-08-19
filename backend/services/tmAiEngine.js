@@ -354,7 +354,7 @@ class TmAiEngine {
         let rows = await this.dataSource.getMerchSales(showId); // CSV headers: show_id,item,quantity_sold,price,gross_sales
   if ((rows == null || rows.length === 0) && typeof showId === 'string' && showId.startsWith('#')) { rows = await this.dataSource.getMerchSales(showId.slice(1)); }  console.log('[DEBUG][merch_sales] rows_length=', Array.isArray(rows) ? rows.length : -1, 'sample=', Array.isArray(rows) && rows.length ? rows[0] : null);
         const details = this.formatMerchSales(rows, member);
-        if (!details) {
+  console.log('[DEBUG][merch_sales] details_len=', (details||'').length, 'final_rows=', Array.isArray(rows) ? rows.length : -1);        if (!details) {
           return { content: tpl.notFound, metadata: { intent: 'merch_sales', show_id: showId } };
         }
         const header = `Show ${showId}`;
@@ -388,7 +388,7 @@ class TmAiEngine {
       for (const s of target) {
         const rows = await this.dataSource.getMerchSales(s.show_id);
         const details = this.formatMerchSales(rows, member);
-        const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
+  console.log('[DEBUG][merch_sales] details_len=', (details||'').length, 'final_rows=', Array.isArray(rows) ? rows.length : -1);        const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
         blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`);
       }
 
