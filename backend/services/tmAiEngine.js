@@ -351,8 +351,8 @@ class TmAiEngine {
       // If we have showId, fetch directly
       if (showId) {
   console.log('[DEBUG][merch_sales] fetching rows for showId=', showId);
-        const rows = await this.dataSource.getMerchSales(showId); // CSV headers: show_id,item,quantity_sold,price,gross_sales
-  console.log('[DEBUG][merch_sales] rows_length=', Array.isArray(rows) ? rows.length : -1, 'sample=', Array.isArray(rows) && rows.length ? rows[0] : null);
+        let rows = await this.dataSource.getMerchSales(showId); // CSV headers: show_id,item,quantity_sold,price,gross_sales
+  if ((rows == null || rows.length === 0) && typeof showId === 'string' && showId.startsWith('#')) { rows = await this.dataSource.getMerchSales(showId.slice(1)); }  console.log('[DEBUG][merch_sales] rows_length=', Array.isArray(rows) ? rows.length : -1, 'sample=', Array.isArray(rows) && rows.length ? rows[0] : null);
         const details = this.formatMerchSales(rows, member);
         if (!details) {
           return { content: tpl.notFound, metadata: { intent: 'merch_sales', show_id: showId } };
