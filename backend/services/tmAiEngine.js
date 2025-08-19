@@ -376,34 +376,71 @@ class TmAiEngine {
         return { content: 'I couldn’t find any shows for that city.', metadata: { intent: 'merch_sales', city } };
       }
 
-      const allWanted = this.detectAllPhrase(message) || (intent && intent.entities && intent.entities.all === true);
+      // Decide on multi-match behaviour: last show vs total sales
+      const wantsLast = /\b(last|latest|most recent)\b/i.test(message);
+      const wantsTotal = /\b(total|cumulative|overall|sum|all sales)\b/i.test(message);
 
-      if (list.length > 1 && !allWanted) {
-        const dates = list.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
-        const clarify = (tpl.multiClarify || 'There are multiple shows in {city}: {dates}. Which show did you mean? (You can reply "all of them".)')
-          .replace('{city}', city)
-          .replace('{dates}', dates);
-        return { content: clarify, metadata: { intent: 'merch_sales', city, multi_match: true, options: list.map(s => ({ show_id: s.show_id, date: s.date })) } };
-      }
+      // Sort shows chronologically by (date, then time if present)
+      const sorted = [...list].sort((a, b) => {
+        const ad = String(a.date || '');
+        const at = String(a.show_time || a.time || '');
+        const bd = String(b.date || '');
+        const bt = String(b.show_time || b.time || '');
+        return (ad + at).localeCompare(bd + bt);
+      });
 
-      const target = allWanted ? list : [list[0]];
-      const blocks = [];
-      for (const s of target) {
-        let rows = await this.dataSource.getMerchSales(s.show_id);
-        if ((rows == null || rows.length === 0) && typeof s.show_id === "string" && s.show_id.startsWith("#")) {
-          rows = await this.dataSource.getMerchSales(s.show_id.slice(1));
+      if (list.length > 1) {
+        if (wantsLast) {
+          const lastShow = sorted[sorted.length - 1];
+          let rows = await this.dataSource.getMerchSales(lastShow.show_id);
+          if ((!rows || rows.length === 0) && typeof lastShow.show_id === "string" && lastShow.show_id.startsWith("#")) {
+            rows = await this.dataSource.getMerchSales(lastShow.show_id.slice(1));
+          }
+          const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
+          const details = this.formatMerchSales(arr, member);
+          const header = `${city} — Last show (${this.formatDateDisplay(lastShow.date, lastShow.timezone || lastShow.venue_timezone)})`;
+          return { content: details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`,
+                   metadata: { intent: 'merch_sales', city, choice: 'last' } };
         }
-        const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
-        const details = this.formatMerchSales(arr, member);
-        const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
-        blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`);
+
+        if (wantsTotal) {
+          const agg = new Map();
+          for (const s of sorted) {
+            let rows = await this.dataSource.getMerchSales(s.show_id);
+            if ((!rows || rows.length === 0) && typeof s.show_id === "string" && s.show_id.startsWith("#")) {
+              rows = await this.dataSource.getMerchSales(s.show_id.slice(1));
+            }
+            const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
+            for (const r of arr) {
+              const key = String(r.item || 'Unknown');
+              const prev = agg.get(key) || { item: key, quantity_sold: 0, price: '', gross_sales: 0 };
+              prev.quantity_sold += Number(r.quantity_sold || 0);
+              prev.gross_sales += Number(r.gross_sales || 0);
+              agg.set(key, prev);
+            }
+          }
+          const combined = Array.from(agg.values()).map(x => ({ ...x, gross_sales: Number(x.gross_sales).toFixed(2) }));
+          const details = this.formatMerchSales(combined, member);
+          const header = `${city} — Total sales across ${list.length} shows`;
+          return { content: details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`,
+                   metadata: { intent: 'merch_sales', city, choice: 'total', shows: list.length } };
+        }
+
+        const dates = sorted.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
+        const clarify = `There are multiple shows in ${city}: ${dates}. Would you like the last show or total sales for all ${city} shows?`;
+        return { content: clarify, metadata: { intent: 'merch_sales', city, multi_match: true, prompt: 'last_or_total' } };
       }
 
-      return {
-        content: blocks.join('\n\n'),
-        metadata: { intent: 'merch_sales', city, count: target.length, all: allWanted },
-        entities: { city, count: target.length }
-      };
+      const s = list[0];
+      let rows = await this.dataSource.getMerchSales(s.show_id);
+      if ((!rows || rows.length === 0) && typeof s.show_id === "string" && s.show_id.startsWith("#")) {
+        rows = await this.dataSource.getMerchSales(s.show_id.slice(1));
+      }
+      const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
+      const details = this.formatMerchSales(arr, member);
+      const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
+      return { content: details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`,
+               metadata: { intent: 'merch_sales', city, choice: 'single' } };
     } catch (err) {
       console.error('[ERROR][merch_sales]', err);
       return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'merch_sales' } };
