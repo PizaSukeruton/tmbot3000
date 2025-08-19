@@ -100,7 +100,8 @@ function createCsvDataSource({ dataDir }) {
   const hotels = parseCsv(safeRead(path.join(dataDir, 'travel_hotels.csv')));
   const ground = parseCsv(safeRead(path.join(dataDir, 'ground_transport.csv')));
   const soundcheck = parseCsv(safeRead(path.join(dataDir, 'soundcheck_schedule.csv')));
-
+  const prodNotes = parseCsv(safeRead(path.join(dataDir, 'production_notes.csv')));
+  const merchSales = parseCsv(safeRead(path.join(dataDir, 'merch_sales.csv')));
   const venueById = indexBy(venues, 'venue_id');
   const showsById = indexBy(shows, 'show_id');
   const setlistByShow = groupBy(setlists, 'show_id');
@@ -111,7 +112,8 @@ function createCsvDataSource({ dataDir }) {
   const groundByShow = groupBy(ground, 'show_id');
   const groundByDate = groupBy(ground, 'date');
   const schedByShow = groupBy(soundcheck, 'show_id');
-
+  const prodNotesByShow = groupBy(prodNotes, 'show_id');
+  const merchByShow = groupBy(merchSales, 'show_id');
   function normalizeShow(s) {
     // Return canonical show object; ensure times & tz fields are named consistently
     return {
@@ -285,6 +287,36 @@ function createCsvDataSource({ dataDir }) {
 
       // Optional technical notes could be provided in a separate row/column if desired
       return { show_id: showId, timezone: venueTz, schedule };
+    },
+    async getProductionNotes(showId) {
+      const notes = prodNotesByShow.get(showId) || [];
+      return {
+        show_id: showId,
+        notes: notes.map(n => ({
+          category: n.category,
+          note: n.note,
+          priority: n.priority,
+          created_by: n.created_by
+        }))
+      };
+    },
+
+    async getMerchSales(showId) {
+      const sales = merchByShow.get(showId) || [];
+      const total = sales.reduce((sum, item) => sum + parseFloat(item.gross_sales || 0), 0);
+      return {
+        show_id: showId,
+        items: sales,
+        total_gross: total
+      };
+    },
+
+    async getFlightsByDestination(city) {
+      const cityLower = city.toLowerCase().trim();
+      const matches = flights.filter(f => 
+        f.arrival_city.toLowerCase().includes(cityLower)
+      );
+      return { flights: matches };
     },
   };
 }
