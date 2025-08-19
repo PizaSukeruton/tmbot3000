@@ -302,6 +302,8 @@ function createCsvDataSource({ dataDir }) {
     },
 
     async getMerchSales(showId) {
+  console.log('[DEBUG][csv] getMerchSales showId=', showId);
+  console.log('[DEBUG][csv] merchSales size=', Array.isArray(merchSales) ? merchSales.length : -1);
       const sales = merchByShow.get(showId) || [];
       const total = sales.reduce((sum, item) => sum + parseFloat(item.gross_sales || 0), 0);
       return {
