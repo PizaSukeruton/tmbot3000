@@ -74,8 +74,9 @@ const HARD_HINTS = [
 // Hex IDs: accept #A1B2C3 or #a1b2c3
 const HEX_RE = /#([A-Fa-f0-9]{6})/g;
 
-// Unicode-capable capture for cities/venues after “in/at”
-const AFTER_IN_AT_RE = /\b(?:in|at)\s+([\p{L}\d][\p{L}\d\s\-'&\.]+?)(?=($|\?|\.|,|;|:))/u;
+// NEW: Unicode-capable capture for cities/venues after common prepositions
+const AFTER_PREP_RE = /\b(?:in|at|for|to)\s+([\p{L}\d][\p{L}\d\s\-'&\.]+?)(?=($|\?|\.|,|;|:))/u;
+const FLIGHT_DEST_RE = /\bto\s+([^\?.,;:]+)/i;
 
 // Possessive city (e.g., "Sydney's show")
 const POSSESSIVE_CITY_RE = /\b([\p{L}\d][\p{L}\d\s\-'\.&]+?)'s\b/iu;
@@ -123,7 +124,20 @@ class TmIntentMatcher {
     const userTz = member.user_timezone || member.timezone || 'UTC';
 
     const dateEntity = parseDateLike(msg, userTz);
-    const cityName = await this.extractCityName(msg, msgLower);
+
+    // NEW: Handle specific city extraction for flight queries
+    let cityName = null;
+    if (intentGuess.bestIntent === 'flight_info') {
+      const flightMatch = FLIGHT_DEST_RE.exec(msg);
+      if (flightMatch) {
+        cityName = cleanName(flightMatch[1]);
+      }
+    }
+    // Fallback to more general city extraction
+    if (!cityName) {
+      cityName = await this.extractCityName(msg, msgLower);
+    }
+    
     const venueName = await this.extractVenueName(msg, msgLower);
 
     // 3) Try to resolve IDs/names
@@ -156,6 +170,10 @@ class TmIntentMatcher {
     if (finalIntent === 'setlist' && (show_id || cityName)) confidence += 0.10;
     if (finalIntent === 'travel_info' && (finalDate || show_id)) confidence += 0.10;
     if (finalIntent === 'show_schedule' && (cityName || finalDate)) confidence += 0.10;
+    // NEW: Boost confidence for merch/production when city is found without show ID
+    if ((finalIntent === 'merch_sales' || finalIntent === 'production_notes') && cityName && !show_id) {
+        confidence += 0.15;
+    }
 
     // Boost/ding based on resolution qualities
     if (venue_conf === 'fuzzy') confidence -= 0.05;
@@ -178,6 +196,9 @@ class TmIntentMatcher {
         confidence = Math.max(confidence, 0.7);
       }
     }
+    
+    // Log entities for debugging, as per brief
+    console.log(`[DEBUG][intentMatcher] Final intent: ${finalIntent}, Confidence: ${confidence}, Entities: ${JSON.stringify(entities)}`);
 
     return {
       intent_type: finalIntent,
@@ -313,10 +334,10 @@ class TmIntentMatcher {
   }
 
   async extractCityName(_msg, msgLower) {
-    // Look for "in <city>" first
-    const afterIn = AFTER_IN_AT_RE.exec(_msg);
-    if (afterIn && looksLikeCityToken(afterIn[1])) {
-      return cleanName(afterIn[1]);
+    // Look for "in|at|for|to <city>" first
+    const afterPrep = AFTER_PREP_RE.exec(_msg);
+    if (afterPrep && looksLikeCityToken(afterPrep[1])) {
+      return cleanName(afterPrep[1]);
     }
 
     // Possessive city "Sydney's"
@@ -338,7 +359,7 @@ class TmIntentMatcher {
 
   async extractVenueName(_msg, msgLower) {
     // Prefer “at <venue>”
-    const afterAt = AFTER_IN_AT_RE.exec(_msg);
+    const afterAt = AFTER_PREP_RE.exec(_msg);
     if (afterAt && looksLikeVenueToken(afterAt[1])) {
       return cleanName(afterAt[1]);
     }
@@ -491,9 +512,9 @@ function levenshtein(a, b) {
     for (let j = 1; j <= bn; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,         // deletion
-        matrix[i][j - 1] + 1,         // insertion
-        matrix[i - 1][j - 1] + cost   // substitution
+        matrix[i - 1][j] + 1,          // deletion
+        matrix[i][j - 1] + 1,          // insertion
+        matrix[i - 1][j - 1] + cost    // substitution
       );
     }
   }
