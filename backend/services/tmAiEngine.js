@@ -87,6 +87,8 @@ class TmAiEngine {
   // Public entrypoint
   async generateResponse(params) {
     const { message, intent, context, member } = params;
+    const _coerced = this.coerceFollowupIntent(message, intent, context);
+    if (_coerced) { intent = _coerced; console.log('[engine] followup->', intent.intent_type); }
     console.log('[DEBUG][engine] intent=', intent?.intent_type, 'entities=', intent?.entities);
 
     if (!this.templatesLoaded) {
@@ -282,6 +284,16 @@ class TmAiEngine {
     }
   }
 
+  // Coerce 'all of them' follow-ups back to the pending merch multi-match
+  coerceFollowupIntent(message, intent, context) {
+    const txt = String(message || '').toLowerCase().trim();
+    const wantsAll = /(all of them|all shows|allb|bothb|every one|every show)b/.test(txt);
+    const last = context && context.lastPrompt;
+    if (wantsAll && last && last.intent === 'merch_sales' && last.multi_match && last.city) {
+      return { intent_type: 'merch_sales', entities: { city: last.city, all: true } };
+    }
+    return null;
+  }
   // ===== NEW Handlers =====
 
   async handleProductionNotes(message, intent, member) {
@@ -339,17 +351,14 @@ class TmAiEngine {
       const showId = intent.entities?.showId || intent.entities?.show_id;
       const city = intent.entities?.city;
 
-      // If we have showId and no city, fetch directly
       if (showId && !city) {
         console.log("[DEBUG][merch_sales] fetching rows for showId=", showId);
-        let rows = await this.dataSource.getMerchSales(showId); // CSV headers: show_id,item,quantity_sold,price,gross_sales
+        let rows = await this.dataSource.getMerchSales(showId);
         if ((rows == null || rows.length === 0) && typeof showId === "string" && showId.startsWith("#")) {
           rows = await this.dataSource.getMerchSales(showId.slice(1));
         }
-        console.log("[DEBUG][merch_sales] rows_length=", Array.isArray(rows) ? rows.length : -1, "sample=", Array.isArray(rows) && rows.length ? rows[0] : null);
         const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
         const details = this.formatMerchSales(arr, member);
-        console.log("[DEBUG][merch_sales] details_len=", (details||"").length, "final_rows=", Array.isArray(rows) ? rows.length : -1);
         if (!details) {
           return { content: tpl.notFound, metadata: { intent: 'merch_sales', show_id: showId } };
         }
@@ -357,7 +366,6 @@ class TmAiEngine {
         return { content: tpl.found.replace('{header}', header).replace('{details}', details), metadata: { intent: 'merch_sales', show_id: showId } };
       }
 
-      // Else, resolve by city
       if (!city) {
         return this.generateClarification('merch sales', 'city or show ID');
       }
@@ -368,17 +376,16 @@ class TmAiEngine {
         return { content: 'I couldn’t find any shows for that city.', metadata: { intent: 'merch_sales', city } };
       }
 
-      // Multiple matches → ask which one unless user said "all"
-      const allWanted = this.detectAllPhrase(message);
+      const allWanted = this.detectAllPhrase(message) || (intent && intent.entities && intent.entities.all === true);
+
       if (list.length > 1 && !allWanted) {
         const dates = list.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
-        const clarify = (tpl.multiClarify || 'There are multiple shows in {city}: {dates}. Which show did you mean? (you can reply "all of them")')
+        const clarify = (tpl.multiClarify || 'There are multiple shows in {city}: {dates}. Which show did you mean? (You can reply "all of them".)')
           .replace('{city}', city)
           .replace('{dates}', dates);
         return { content: clarify, metadata: { intent: 'merch_sales', city, multi_match: true, options: list.map(s => ({ show_id: s.show_id, date: s.date })) } };
       }
 
-      // Fetch sales for 1 or many shows
       const target = allWanted ? list : [list[0]];
       const blocks = [];
       for (const s of target) {
@@ -402,7 +409,6 @@ class TmAiEngine {
       return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'merch_sales' } };
     }
   }
-
   async handleFlightInfo(message, intent, member) {
     const tpl = this.responseTemplates.get('flight_info');
     try {
