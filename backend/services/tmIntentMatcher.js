@@ -548,3 +548,34 @@ function nextDow(d, targetDow) {
 // Export a ready-to-use singleton (matches your existing `require('./tmIntentMatcher')` usage)
 module.exports = new TmIntentMatcher();
 
+// --- Override: "last show merch" -> merch_sales (mode=last)
+(() => {
+  const orig = module.exports && module.exports.matchIntent;
+  if (typeof orig === 'function') {
+    module.exports.matchIntent = function(message) {
+      try {
+        if (typeof message === 'string' && /\blast\s+show\s+merch\b/i.test(message)) {
+          return { intent_type: 'merch_sales', entities: { mode: 'last' } };
+        }
+      } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+  }
+})();
+// --- Disable merch_sales intent globally
+(() => {
+  const orig = module.exports && module.exports.matchIntent;
+  if (typeof orig === 'function') {
+    module.exports.matchIntent = function(message) {
+      const res = orig.apply(this, arguments) || {};
+      try {
+        const text = (message || '').toString().toLowerCase();
+        const mentionsMerch = /\b(merch|merchandise|merch sales|merchandise sales|merchandising|merch-sale)\b/.test(text);
+        if (res.intent_type === 'merch_sales' || mentionsMerch) {
+          return { intent_type: 'unknown', entities: {}, note: 'merch_disabled' };
+        }
+      } catch (e) {}
+      return res;
+    };
+  }
+})();
