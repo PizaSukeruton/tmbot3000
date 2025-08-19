@@ -3,13 +3,14 @@
 // - No external deps
 // - Timezone-aware formatting based on user preference (venue | user_local | both)
 // - Expects dataSource with methods: getShows, getShow, getVenue, getSetlist, getTravelInfo, getSoundcheckSchedule
+// - Also expects: getProductionNotes(showId), getMerchSales(showId), getFlightsByDestination(city)
 // - Assumes date/time fields are ISO8601 strings with timezone (preferred), or plain "HH:MM" with a known venue timezone
 
 class TmAiEngine {
   /**
    * @param {object} opts
    * @param {object} opts.dataSource - Provides show/venue/setlist/travel/schedule data
-   * @param {string} [opts.defaultUserTimezone='UTC'] - Fallback when user TZ missing
+   * @param {string} [opts.defaultUserTimezone='UTC'] - Fallback when user TZ missing (used only when preference explicitly requests user_local/both)
    */
   constructor({ dataSource, defaultUserTimezone = 'UTC' }) {
     this.dataSource = dataSource;
@@ -58,6 +59,28 @@ class TmAiEngine {
       error: 'I’m having trouble accessing the schedule right now.',
     });
 
+    // ✅ NEW templates
+    this.responseTemplates.set('production_notes', {
+      found: '📋 Production Notes for {header}:\n\n{details}',
+      multiClarify: 'There are multiple matching shows in {city}: {dates}. Which show did you mean? (You can reply “all of them”.)',
+      notFound: 'No production notes found for that show.',
+      error: 'I’m having trouble accessing production notes right now.',
+    });
+
+    this.responseTemplates.set('merch_sales', {
+      found: '🧾 Merch Sales for {header}:\n\n{details}',
+      multiClarify: 'There are multiple matching shows in {city}: {dates}. Which show did you mean? (You can reply “all of them”.)',
+      notFound: 'No recorded merch sales for that show.',
+      error: 'I’m having trouble accessing merch sales right now.',
+    });
+
+    this.responseTemplates.set('flight_info', {
+      found: '✈️ Flights to {city}:\n\n{details}',
+      askTz: 'For flight times, do you want airport local time, your local time, or both?',
+      notFound: 'No upcoming flights found to {city}.',
+      error: 'I’m having trouble accessing flight information right now.',
+    });
+
     this.templatesLoaded = true;
   }
 
@@ -93,6 +116,16 @@ class TmAiEngine {
         case 'soundcheck':
           return await this.handleSoundcheck(intent, member);
 
+        // ✅ NEW intent handlers
+        case 'production_notes':
+          return await this.handleProductionNotes(message, intent, member);
+
+        case 'merch_sales':
+          return await this.handleMerchSales(message, intent, member);
+
+        case 'flight_info':
+          return await this.handleFlightInfo(message, intent, member);
+
         default:
           return this.generateFallbackResponse(message, intent);
       }
@@ -106,7 +139,7 @@ class TmAiEngine {
     }
   }
 
-  // ===== Handlers =====
+  // ===== Existing Handlers =====
 
   async handleShowSchedule(intent, member) {
     const tpl = this.responseTemplates.get('show_schedule');
@@ -245,6 +278,176 @@ class TmAiEngine {
       };
     } catch (err) {
       return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'soundcheck' } };
+    }
+  }
+
+  // ===== NEW Handlers =====
+
+  async handleProductionNotes(message, intent, member) {
+    const tpl = this.responseTemplates.get('production_notes');
+    try {
+      const showId = intent.entities?.showId || intent.entities?.show_id;
+      const city = intent.entities?.city;
+
+      // If we have showId, fetch directly
+      if (showId) {
+        const rows = await this.dataSource.getProductionNotes(showId); // CSV headers: show_id,category,note,priority,created_by
+        const details = this.formatProductionNotes(rows);
+        if (!details) {
+          return { content: tpl.notFound, metadata: { intent: 'production_notes', show_id: showId } };
+        }
+        const header = `Show ${showId}`;
+        return { content: tpl.found.replace('{header}', header).replace('{details}', details), metadata: { intent: 'production_notes', show_id: showId } };
+      }
+
+      // Else, resolve by city
+      if (!city) {
+        return this.generateClarification('production notes', 'city or show ID');
+      }
+
+      const { shows } = await this.dataSource.getShows({ city });
+      const list = Array.isArray(shows) ? shows : [];
+      if (list.length === 0) {
+        return { content: 'I couldn’t find any shows for that city.', metadata: { intent: 'production_notes', city } };
+      }
+
+      // Multiple matches → ask which one unless user said "all"
+      const allWanted = this.detectAllPhrase(message);
+      if (list.length > 1 && !allWanted) {
+        const dates = list.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
+        const clarify = tpl.multiClarify
+          .replace('{city}', city)
+          .replace('{dates}', dates);
+        return { content: clarify, metadata: { intent: 'production_notes', city, multi_match: true, options: list.map(s => ({ show_id: s.show_id, date: s.date })) } };
+      }
+
+      // Fetch notes for 1 or many shows
+      const target = allWanted ? list : [list[0]];
+      const blocks = [];
+      for (const s of target) {
+        const rows = await this.dataSource.getProductionNotes(s.show_id);
+        const details = this.formatProductionNotes(rows);
+        const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
+        blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No production notes found.)`);
+      }
+
+      return {
+        content: blocks.join('\n\n'),
+        metadata: { intent: 'production_notes', city, count: target.length, all: allWanted },
+        entities: { city, count: target.length }
+      };
+    } catch (err) {
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'production_notes' } };
+    }
+  }
+
+  async handleMerchSales(message, intent, member) {
+    const tpl = this.responseTemplates.get('merch_sales');
+    try {
+      const showId = intent.entities?.showId || intent.entities?.show_id;
+      const city = intent.entities?.city;
+
+      // If we have showId, fetch directly
+      if (showId) {
+        const rows = await this.dataSource.getMerchSales(showId); // CSV headers: show_id,item,quantity_sold,price,gross_sales
+        const details = this.formatMerchSales(rows, member);
+        if (!details) {
+          return { content: tpl.notFound, metadata: { intent: 'merch_sales', show_id: showId } };
+        }
+        const header = `Show ${showId}`;
+        return { content: tpl.found.replace('{header}', header).replace('{details}', details), metadata: { intent: 'merch_sales', show_id: showId } };
+      }
+
+      // Else, resolve by city
+      if (!city) {
+        return this.generateClarification('merch sales', 'city or show ID');
+      }
+
+      const { shows } = await this.dataSource.getShows({ city });
+      const list = Array.isArray(shows) ? shows : [];
+      if (list.length === 0) {
+        return { content: 'I couldn’t find any shows for that city.', metadata: { intent: 'merch_sales', city } };
+      }
+
+      // Multiple matches → ask which one unless user said "all"
+      const allWanted = this.detectAllPhrase(message);
+      if (list.length > 1 && !allWanted) {
+        const dates = list.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
+        const clarify = tpl.multiClarify
+          .replace('{city}', city)
+          .replace('{dates}', dates);
+        return { content: clarify, metadata: { intent: 'merch_sales', city, multi_match: true, options: list.map(s => ({ show_id: s.show_id, date: s.date })) } };
+      }
+
+      // Fetch sales for 1 or many shows
+      const target = allWanted ? list : [list[0]];
+      const blocks = [];
+      for (const s of target) {
+        const rows = await this.dataSource.getMerchSales(s.show_id);
+        const details = this.formatMerchSales(rows, member);
+        const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
+        blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`);
+      }
+
+      return {
+        content: blocks.join('\n\n'),
+        metadata: { intent: 'merch_sales', city, count: target.length, all: allWanted },
+        entities: { city, count: target.length }
+      };
+    } catch (err) {
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'merch_sales' } };
+    }
+  }
+
+  async handleFlightInfo(message, intent, member) {
+    const tpl = this.responseTemplates.get('flight_info');
+    try {
+      const city = intent.entities?.city;
+      if (!city) {
+        return this.generateClarification('flight info', 'destination city');
+      }
+
+      // Timezone preference must be explicit (no defaults)
+      const pref = member?.flight_time_pref || null;
+      if (!pref || pref === 'ask_each_time') {
+        return {
+          content: tpl.askTz,
+          metadata: { intent: 'flight_info', needs_preference: 'flight_time_pref', city }
+        };
+      }
+
+      // Fetch flights to destination (expect array, may include show_id + date per your CSV)
+      const flights = await this.dataSource.getFlightsByDestination(city);
+      const list = Array.isArray(flights) ? flights : [];
+      if (list.length === 0) {
+        return { content: tpl.notFound.replace('{city}', city), metadata: { intent: 'flight_info', city } };
+      }
+
+      // Sort by date + departure_time if present
+      list.sort((a, b) => {
+        const ad = String(a.date || '');
+        const bd = String(b.date || '');
+        if (ad !== bd) return ad < bd ? -1 : 1;
+        const at = String(a.departure_time || '');
+        const bt = String(b.departure_time || '');
+        return at < bt ? -1 : at > bt ? 1 : 0;
+      });
+
+      // Cap output (avoid flooding)
+      const capped = list.slice(0, 5);
+      const details = this.formatFlightList(capped, member);
+
+      const content = this.responseTemplates.get('flight_info').found
+        .replace('{city}', city)
+        .replace('{details}', details);
+
+      return {
+        content,
+        metadata: { intent: 'flight_info', city, count: capped.length, total: list.length },
+        entities: { destination: city, count: capped.length }
+      };
+    } catch (err) {
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'flight_info' } };
     }
   }
 
@@ -401,8 +604,8 @@ class TmAiEngine {
         const pickup = this.formatTimeDisplay(
           info.ground_transport.pickup_time,
           info.timezone,
-          tzPref,
-          userTz,
+          member?.timezone_preference || 'venue',
+          member?.user_timezone || this.defaultUserTimezone,
           true
         );
         out.push(`Pickup: ${pickup} at ${info.ground_transport.pickup_location || 'TBD'}`);
@@ -412,10 +615,10 @@ class TmAiEngine {
     return out.join('\n').trim();
   }
 
-  formatSoundcheckInfo(data, member) {
+  formatSoundcheckInfo(data, _member) {
     const out = [];
-    const tzPref = member?.timezone_preference || 'venue';
-    const userTz = member?.user_timezone || this.defaultUserTimezone;
+    const tzPref = _member?.timezone_preference || 'venue';
+    const userTz = _member?.user_timezone || this.defaultUserTimezone;
     const venueTz = data?.timezone;
 
     if (Array.isArray(data?.schedule) && data.schedule.length) {
@@ -428,11 +631,100 @@ class TmAiEngine {
       }
     }
 
-    if (data?.technical_notes && (member?.role === 'musician' || member?.role === 'crew')) {
+    if (data?.technical_notes && (_member?.role === 'musician' || _member?.role === 'crew')) {
       out.push(`\n**Technical Notes:**\n${data.technical_notes}`);
     }
 
     return out.join('\n').trim();
+  }
+
+  // NEW formatters
+
+  formatProductionNotes(rows) {
+    // rows: [{ show_id, category, note, priority, created_by }, ...]
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    // Group by category
+    const byCat = new Map();
+    for (const r of rows) {
+      const cat = (r.category || 'General').trim();
+      if (!byCat.has(cat)) byCat.set(cat, []);
+      byCat.get(cat).push(r);
+    }
+    const badge = (p) => {
+      const v = String(p || '').toLowerCase();
+      if (v.startsWith('h')) return '🔴 High';
+      if (v.startsWith('m')) return '🟠 Medium';
+      if (v.startsWith('l')) return '🟢 Low';
+      return '';
+    };
+
+    const blocks = [];
+    for (const [cat, items] of byCat.entries()) {
+      const lines = items.map(i => {
+        const b = badge(i.priority);
+        const who = i.created_by ? ` — ${i.created_by}` : '';
+        return `• ${i.note || ''}${b ? ` (${b})` : ''}${who}`;
+      });
+      blocks.push(`**${cat}**\n${lines.join('\n')}`);
+    }
+    return blocks.join('\n\n').trim();
+  }
+
+  formatMerchSales(rows, member) {
+    // rows: [{ show_id, item, quantity_sold, price, gross_sales }, ...]
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    const fmtNum = (n) => {
+      const v = Number(n);
+      return Number.isFinite(v) ? v.toLocaleString(member?.number_locale || 'en-US') : String(n || '');
+    };
+
+    let totalQty = 0;
+    let totalGross = 0;
+    const lines = rows.map(r => {
+      const qty = Number(r.quantity_sold) || 0;
+      const price = Number(r.price);
+      const gross = Number(r.gross_sales);
+      totalQty += qty;
+      if (Number.isFinite(gross)) totalGross += gross;
+      const priceStr = Number.isFinite(price) ? price.toFixed(2) : String(r.price || '');
+      const grossStr = Number.isFinite(gross) ? gross.toFixed(2) : String(r.gross_sales || '');
+      return `• ${r.item || 'Item'} — Qty: ${fmtNum(qty)} · Price: ${priceStr} · Gross: ${grossStr}`;
+    });
+
+    const totals = `\n**Totals:** Qty ${fmtNum(totalQty)} · Gross ${totalGross.toFixed(2)}`;
+    return lines.join('\n') + totals;
+  }
+
+  formatFlightList(flights, member) {
+    // flights: [{ date, airline, flight_number, departure_city, arrival_city,
+    //             departure_time, arrival_time, departure_timezone, arrival_timezone, confirmation, show_id }, ...]
+    const pref = member?.flight_time_pref || 'venue'; // note: handler ensures pref is chosen (not defaulted) before calling this
+    const userTz = member?.user_timezone || this.defaultUserTimezone;
+
+    const blockFor = (f) => {
+      const head = `${(f.airline || '').trim()} ${(f.flight_number || '').trim()}`.trim();
+      const route = `${f.departure_city} → ${f.arrival_city}`;
+
+      const dep = f.departure_time
+        ? this.formatTimeDisplay(f.departure_time, f.departure_timezone, pref, userTz, true)
+        : 'TBD';
+      const arr = f.arrival_time
+        ? this.formatTimeDisplay(f.arrival_time, f.arrival_timezone, pref, userTz, true)
+        : 'TBD';
+
+      const parts = [];
+      parts.push(head || 'Flight');
+      if (f.date) parts.push(this.formatDateDisplay(f.date));
+      parts.push(route);
+      parts.push(`Departs: ${dep}`);
+      parts.push(`Arrives: ${arr}`);
+      if (f.confirmation && member?.role && (member.role === 'manager' || member.role === 'tour_manager')) {
+        parts.push(`Confirmation: ${f.confirmation}`);
+      }
+      return parts.join('\n');
+    };
+
+    return flights.map(blockFor).join('\n\n');
   }
 
   // ===== Utilities =====
@@ -462,7 +754,7 @@ class TmAiEngine {
   /**
    * Format a time value according to user preference.
    * @param {string} isoOrLocal - ISO8601 timestamp (preferred) OR "YYYY-MM-DD HH:MM" OR "HH:MM"
-   * @param {string} venueTimeZone - IANA TZ (e.g., "America/New_York")
+   * @param {string} venueTimeZone - IANA TZ (e.g., "America/New_York" or airport TZ)
    * @param {'venue'|'user_local'|'both'} preference
    * @param {string} userTimeZone - IANA TZ for user
    * @param {boolean} includeDate - include date when formatting (for travel/schedules)
@@ -516,7 +808,6 @@ class TmAiEngine {
       city: first.city,
       venue_id: first.venue_id,
     };
-    // (Extend as needed)
   }
 
   extractResponseEntitiesFromVenue(v) {
@@ -574,6 +865,13 @@ class TmAiEngine {
         'I understand what you’re asking, but I need a bit more detail. Can you add specifics (like city, date, or an ID)?',
       metadata: { intent: intent.intent_type, needs_clarification: true },
     };
+  }
+
+  // ===== Local helpers (new) =====
+
+  detectAllPhrase(message) {
+    const m = String(message || '').toLowerCase();
+    return /\b(all( of them| shows)?|everything|both|show all)\b/.test(m);
   }
 }
 

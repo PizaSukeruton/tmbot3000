@@ -49,7 +49,18 @@ const INTENT_KEYWORDS = {
     'soundcheck', 'sound check', 'load in', 'load-in', 'load out', 'load-out',
     'curfew', 'call time', 'call-time'
   ],
-};
+  production_notes: [
+    'production notes', 'production', 'prod notes', 'warnings', 'technical notes',
+    'technical requirements', 'tech notes', 'venue notes'
+  ],
+  merch_sales: [
+    'merch', 'merchandise', 'sales', 'merch sales', 'revenue',
+    'merchandise sales', 'merch revenue', 'sales figures'
+  ],
+  flight_info: [
+    'flight', 'flights', 'fly', 'flying', 'flight details', 'flight info',
+    'departure', 'arrival', 'airline', 'airport'
+  ]};
 
 // A few helper synonyms mapping to primary intents (lightweight)
 const HARD_HINTS = [
@@ -178,7 +189,7 @@ class TmIntentMatcher {
 
   // Guess base intent from bag-of-words over INTENT_KEYWORDS (+ HARD_HINTS)
   guessIntent(msgLower) {
-    const score = { show_schedule: 0, venue_info: 0, setlist: 0, travel_info: 0, soundcheck: 0 };
+    const score = { show_schedule: 0, venue_info: 0, setlist: 0, travel_info: 0, soundcheck: 0, production_notes: 0, merch_sales: 0, flight_info: 0 };
     for (const [intent, words] of Object.entries(INTENT_KEYWORDS)) {
       for (const w of words) {
         if (msgLower.includes(w)) score[intent] += 1;
