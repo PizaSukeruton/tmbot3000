@@ -268,8 +268,8 @@ function start() {
   const server = http.createServer(handleHttpRequest);
   const wss = setupWebSocket(server);
 
-  server.listen(PORT, () => {
-    console.log(`[HTTP] Server running on http://localhost:${PORT} (env=${process.env.NODE_ENV || 'dev'})`);
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[HTTP] Server running on http://0.0.0.0:${PORT} (env=${process.env.NODE_ENV || 'dev'})`);
   });
 
   // Graceful shutdown for Render/containers

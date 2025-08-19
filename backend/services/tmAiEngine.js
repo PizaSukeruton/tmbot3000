@@ -87,6 +87,7 @@ class TmAiEngine {
   // Public entrypoint
   async generateResponse(params) {
     const { message, intent, context, member } = params;
+    console.log('[DEBUG][engine] intent=', intent?.intent_type, 'entities=', intent?.entities);
 
     if (!this.templatesLoaded) {
       await this.loadTemplates();
