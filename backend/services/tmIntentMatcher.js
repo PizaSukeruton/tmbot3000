@@ -579,3 +579,45 @@ module.exports = new TmIntentMatcher();
     };
   }
 })();
+// --- Help/Capabilities intent (non-invasive wrapper)
+(() => {
+  const orig = module.exports && module.exports.matchIntent;
+  if (typeof orig === 'function') {
+    module.exports.matchIntent = function(message) {
+      const text = (message || '').toString().toLowerCase().trim();
+      // trigger on common “help” phrasings
+      if (
+        /^help$/.test(text) ||
+        /^(what can i (ask|ask you)\??)$/.test(text) ||
+        /^(what can you do\??)$/.test(text) ||
+        /^(how (can|do) you help\??)$/.test(text) ||
+        /^(what do you (do|know)\??)$/.test(text) ||
+        /^capabilities$/.test(text)
+      ) {
+        return { intent_type: 'help', entities: {} };
+      }
+      // otherwise, fall back to the original matcher
+      return orig.apply(this, arguments);
+    };
+  }
+})();
+// --- Help/Capabilities intent (non-invasive wrapper)
+(function(){
+  const orig = module.exports && module.exports.matchIntent;
+  if (typeof orig === "function") {
+    module.exports.matchIntent = function(message) {
+      const text = (message || "").toString().toLowerCase().trim();
+      if (
+        text === "help" ||
+        text === "capabilities" ||
+        /^what can i (ask|ask you)\??$/.test(text) ||
+        /^what can you do\??$/.test(text) ||
+        /^how (can|do) you help\??$/.test(text) ||
+        /^what do you (do|know)\??$/.test(text)
+      ) {
+        return { intent_type: "help", entities: {} };
+      }
+      return orig.apply(this, arguments);
+    };
+  }
+})();
