@@ -350,6 +350,7 @@ class TmAiEngine {
 
       // If we have showId, fetch directly
       if (showId) {
+  console.log('[DEBUG][merch_sales] fetching rows for showId=', showId);
         const rows = await this.dataSource.getMerchSales(showId); // CSV headers: show_id,item,quantity_sold,price,gross_sales
         const details = this.formatMerchSales(rows, member);
         if (!details) {
