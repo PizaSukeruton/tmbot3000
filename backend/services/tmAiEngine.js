@@ -289,10 +289,8 @@ class TmAiEngine {
     try {
       const showId = intent.entities?.showId || intent.entities?.show_id;
       const city = intent.entities?.city;
-
-      // If we have showId, fetch directly
-      if (showId) {
-        const rows = await this.dataSource.getProductionNotes(showId); // CSV headers: show_id,category,note,priority,created_by
+      if (showId && !city) {
+        const rows = await this.dataSource.getProductionNotes(showId);
         const details = this.formatProductionNotes(rows);
         if (!details) {
           return { content: tpl.notFound, metadata: { intent: 'production_notes', show_id: showId } };
@@ -300,44 +298,37 @@ class TmAiEngine {
         const header = `Show ${showId}`;
         return { content: tpl.found.replace('{header}', header).replace('{details}', details), metadata: { intent: 'production_notes', show_id: showId } };
       }
-
-      // Else, resolve by city
       if (!city) {
         return this.generateClarification('production notes', 'city or show ID');
       }
-
       const { shows } = await this.dataSource.getShows({ city });
       const list = Array.isArray(shows) ? shows : [];
       if (list.length === 0) {
         return { content: 'I couldn’t find any shows for that city.', metadata: { intent: 'production_notes', city } };
       }
-
-      // Multiple matches → ask which one unless user said "all"
       const allWanted = this.detectAllPhrase(message);
       if (list.length > 1 && !allWanted) {
         const dates = list.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
-        const clarify = tpl.multiClarify
+        const clarify = (tpl.multiClarify || 'There are multiple shows in {city}: {dates}. Which show did you mean? (you can reply "all of them")')
           .replace('{city}', city)
           .replace('{dates}', dates);
         return { content: clarify, metadata: { intent: 'production_notes', city, multi_match: true, options: list.map(s => ({ show_id: s.show_id, date: s.date })) } };
       }
-
-      // Fetch notes for 1 or many shows
       const target = allWanted ? list : [list[0]];
       const blocks = [];
       for (const s of target) {
         const rows = await this.dataSource.getProductionNotes(s.show_id);
         const details = this.formatProductionNotes(rows);
         const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
-        blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No production notes found.)`);
+        blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No production notes recorded.)`);
       }
-
       return {
         content: blocks.join('\n\n'),
         metadata: { intent: 'production_notes', city, count: target.length, all: allWanted },
         entities: { city, count: target.length }
       };
     } catch (err) {
+      console.error('[ERROR][production_notes]', err);
       return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'production_notes' } };
     }
   }
@@ -348,8 +339,8 @@ class TmAiEngine {
       const showId = intent.entities?.showId || intent.entities?.show_id;
       const city = intent.entities?.city;
 
-      // If we have showId, fetch directly
-      if (showId) {
+      // If we have showId and no city, fetch directly
+      if (showId && !city) {
         console.log("[DEBUG][merch_sales] fetching rows for showId=", showId);
         let rows = await this.dataSource.getMerchSales(showId); // CSV headers: show_id,item,quantity_sold,price,gross_sales
         if ((rows == null || rows.length === 0) && typeof showId === "string" && showId.startsWith("#")) {
@@ -359,7 +350,8 @@ class TmAiEngine {
         const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
         const details = this.formatMerchSales(arr, member);
         console.log("[DEBUG][merch_sales] details_len=", (details||"").length, "final_rows=", Array.isArray(rows) ? rows.length : -1);
-        if (!details) {          return { content: tpl.notFound, metadata: { intent: 'merch_sales', show_id: showId } };
+        if (!details) {
+          return { content: tpl.notFound, metadata: { intent: 'merch_sales', show_id: showId } };
         }
         const header = `Show ${showId}`;
         return { content: tpl.found.replace('{header}', header).replace('{details}', details), metadata: { intent: 'merch_sales', show_id: showId } };
@@ -380,7 +372,7 @@ class TmAiEngine {
       const allWanted = this.detectAllPhrase(message);
       if (list.length > 1 && !allWanted) {
         const dates = list.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
-        const clarify = tpl.multiClarify
+        const clarify = (tpl.multiClarify || 'There are multiple shows in {city}: {dates}. Which show did you mean? (you can reply "all of them")')
           .replace('{city}', city)
           .replace('{dates}', dates);
         return { content: clarify, metadata: { intent: 'merch_sales', city, multi_match: true, options: list.map(s => ({ show_id: s.show_id, date: s.date })) } };
@@ -396,8 +388,8 @@ class TmAiEngine {
         }
         const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
         const details = this.formatMerchSales(arr, member);
-        const header = city + " — " + this.formatDateDisplay(s.date, s.timezone || s.venue_timezone);
-        blocks.push(details ? "**" + header + "**\n" + details : "**" + header + "**\n(No merch sales recorded.)");
+        const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
+        blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`);
       }
 
       return {
@@ -419,8 +411,8 @@ class TmAiEngine {
         return this.generateClarification('flight info', 'destination city');
       }
 
-      // Timezone preference must be explicit (no defaults)
-      const pref = member?.flight_time_pref || null;
+      // Timezone preference must be explicit for flights
+      const pref = member?.flight_time_pref || null; // 'venue' | 'user_local' | 'both' | 'ask_each_time'
       if (!pref || pref === 'ask_each_time') {
         return {
           content: tpl.askTz,
@@ -428,54 +420,54 @@ class TmAiEngine {
         };
       }
 
-      // Fetch flights to destination (expect array, may include show_id + date per your CSV)
-      const flights = await this.dataSource.getFlightsByDestination(city);
-      const list = Array.isArray(flights) ? flights : [];
+      // Fetch flights to destination (csvDataSource returns { flights: [...] })
+      const data = await this.dataSource.getFlightsByDestination(city);
+      const list = Array.isArray(data?.flights) ? data.flights : (Array.isArray(data) ? data : []);
       if (list.length === 0) {
         return { content: tpl.notFound.replace('{city}', city), metadata: { intent: 'flight_info', city } };
       }
 
-      // Sort by date + departure_time if present
+      // Sort by date, then by departure_time
       list.sort((a, b) => {
         const ad = String(a.date || '');
         const bd = String(b.date || '');
         if (ad !== bd) return ad < bd ? -1 : 1;
-        const at = String(a.departure_time || '');
-        const bt = String(b.departure_time || '');
+        const at = a.departure_time || '';
+        const bt = b.departure_time || '';
         return at < bt ? -1 : at > bt ? 1 : 0;
       });
 
-      // Cap output (avoid flooding)
-      const capped = list.slice(0, 5);
-      const details = this.formatFlightList(capped, member);
+      const userTz = member?.user_timezone || this.defaultUserTimezone;
+      const lines = list.map(f => {
+        const dep = this.formatTimeDisplay(f.departure_time, f.departure_timezone, pref, userTz, true);
+        const arr = this.formatTimeDisplay(f.arrival_time, f.arrival_timezone, pref, userTz, true);
+        const head = `${f.airline || ''} ${f.flight_number || ''}`.trim();
+        const conf = f.confirmation ? ` · Conf: ${f.confirmation}` : '';
+        return `${head}
+${f.departure_city} → ${f.arrival_city}
+Departs: ${dep}
+Arrives: ${arr}${conf}`;
+      }).join('\n\n');
 
-      const content = this.responseTemplates.get('flight_info').found
-        .replace('{city}', city)
-        .replace('{details}', details);
-
+      const header = (tpl.foundHeader || `✈️ Flights to ${city}:\n\n`);
       return {
-        content,
-        metadata: { intent: 'flight_info', city, count: capped.length, total: list.length },
-        entities: { destination: city, count: capped.length }
+        content: `${header}${lines}`,
+        metadata: { intent: 'flight_info', city, count: list.length }
       };
     } catch (err) {
       return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'flight_info' } };
     }
   }
 
-  // ===== Formatting helpers =====
-
   formatShowLine(index, show, member) {
-    const lineParts = [];
-
-    // Date line (weekday, Month DD, YYYY — venue city/country)
     const dateStr = this.formatDateDisplay(show.date, show.timezone || show.venue_timezone);
     const locStr = [show.venue_name, show.city, show.state || show.country]
       .filter(Boolean)
       .join(', ');
 
+    const lineParts = [];
     lineParts.push(`${index + 1}. ${dateStr}`);
-    lineParts.push(`   📍 ${locStr}`);
+    lineParts.push(`   📍 ${locStr}`);
 
     // Doors/Show times (TZ-aware) + role specifics
     const tzPref = member?.timezone_preference || 'venue';
@@ -483,29 +475,29 @@ class TmAiEngine {
 
     if (show.doors_time) {
       lineParts.push(
-        `   🚪 Doors: ${this.formatTimeDisplay(show.doors_time, show.timezone, tzPref, userTz)}`
+        `   🚪 Doors: ${this.formatTimeDisplay(show.doors_time, show.timezone, tzPref, userTz)}`
       );
     }
     if (show.show_time) {
       lineParts.push(
-        `   🎫 Show: ${this.formatTimeDisplay(show.show_time, show.timezone, tzPref, userTz)}`
+        `   🎫 Show: ${this.formatTimeDisplay(show.show_time, show.timezone, tzPref, userTz)}`
       );
     }
     if (member?.role && (member.role === 'musician' || member.role === 'manager')) {
       if (show.soundcheck_time) {
         lineParts.push(
-          `   🔊 Soundcheck: ${this.formatTimeDisplay(show.soundcheck_time, show.timezone, tzPref, userTz)}`
+          `   🔊 Soundcheck: ${this.formatTimeDisplay(show.soundcheck_time, show.timezone, tzPref, userTz)}`
         );
       }
       if (show.load_in_time) {
         lineParts.push(
-          `   📦 Load-in: ${this.formatTimeDisplay(show.load_in_time, show.timezone, tzPref, userTz)}`
+          `   📦 Load-in: ${this.formatTimeDisplay(show.load_in_time, show.timezone, tzPref, userTz)}`
         );
       }
     }
 
     if (show.ticket_status) {
-      lineParts.push(`   🎟️ ${show.ticket_status}`);
+      lineParts.push(`   🎟️ ${show.ticket_status}`);
     }
 
     return lineParts.join('\n');
@@ -639,7 +631,7 @@ class TmAiEngine {
           ? this.formatTimeDisplay(item.time, venueTz, tzPref, userTz, true)
           : 'TBD';
         out.push(`${time} - ${item.activity}`);
-        if (item.notes) out.push(`   ${item.notes}`);
+        if (item.notes) out.push(`   ${item.notes}`);
       }
     }
 
@@ -709,7 +701,7 @@ class TmAiEngine {
 
   formatFlightList(flights, member) {
     // flights: [{ date, airline, flight_number, departure_city, arrival_city,
-    //             departure_time, arrival_time, departure_timezone, arrival_timezone, confirmation, show_id }, ...]
+    //           departure_time, arrival_time, departure_timezone, arrival_timezone, confirmation, show_id }, ...]
     const pref = member?.flight_time_pref || 'venue'; // note: handler ensures pref is chosen (not defaulted) before calling this
     const userTz = member?.user_timezone || this.defaultUserTimezone;
 
