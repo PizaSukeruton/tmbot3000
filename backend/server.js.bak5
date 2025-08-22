@@ -1,0 +1,52 @@
+// backend/server.js
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const pool = require('./db/pool');
+
+// Core services
+const processor = require('./services/tmMessageProcessor');
+
+// Create app + processor
+const app = express();
+
+
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
+
+// Chat endpoint
+app.post('/api/chat/message', async (req, res) => {
+  try {
+    const { memberId, content } = req.body;
+
+    if (!memberId || !content) {
+      return res.status(400).json({ error: 'memberId and content are required' });
+    }
+
+    const result = await processor.processMessage({
+      session_id,
+      member_id,
+      content,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[Server] Error handling /api/chat/message:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Serve frontend (if built)
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`[Server] Listening on port ${PORT}`);
+});
+

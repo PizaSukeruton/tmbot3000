@@ -1,0 +1,570 @@
+const { createCsvDataSource } = require('./csvDataSource');
+const commandHandlers = require('./tmCommandHandlers');
+class TmAiEngine {
+  constructor({ dataSource, defaultUserTimezone = 'UTC' }) {
+    this.dataSource = dataSource;
+    this.defaultUserTimezone = defaultUserTimezone;
+    this.responseTemplates = new Map();
+    this.templatesLoaded = false;
+  }
+  static async create(opts) {
+    const engine = new TmAiEngine(opts);
+    await engine.loadTemplates();
+    return engine;
+  }
+  async loadTemplates() {
+    this.responseTemplates.set('show_schedule', {
+      found: 'I found {count} show{plural}:\n\n{details}',
+      notFound: 'No shows matched your criteria.',
+      error: 'I’m having trouble accessing the show schedule right now.',
+    });
+    this.responseTemplates.set('venue_info', {
+      found: 'Here’s the venue info for {venue_name}:\n\n{details}',
+      notFound: 'I couldn’t find information about that venue.',
+      error: 'I’m having trouble accessing venue information right now.',
+    });
+    this.responseTemplates.set('setlist', {
+      found: '🎵 Setlist for {show_name}:\n\n{songs}',
+      notFound: 'The setlist hasn’t been finalized yet.',
+      error: 'I’m having trouble accessing setlist information.',
+    });
+    this.responseTemplates.set('travel_info', {
+      found: '✈️ Travel Information:\n\n{details}',
+      notFound: 'No travel information available.',
+      error: 'I’m having trouble accessing travel details right now.',
+    });
+    this.responseTemplates.set('soundcheck', {
+      found: '🔊 Schedule:\n\n{details}',
+      notFound: 'No soundcheck schedule available.',
+      error: 'I’m having trouble accessing the schedule right now.',
+    });
+    this.responseTemplates.set('production_notes', {
+      found: '📋 Production Notes for {header}:\n\n{details}',
+      multiClarify: 'There are multiple matching shows in {city}: {dates}. Which show did you mean? (You can reply “all of them”.)',
+      notFound: 'No production notes found for that show.',
+      error: 'I’m having trouble accessing production notes right now.',
+    });
+    this.responseTemplates.set('merch_sales', {
+      found: '🧾 Merch Sales for {header}:\n\n{details}',
+      multiClarify: 'There are multiple matching shows in {city}: {dates}. Which show did you mean? (You can reply “all of them”.)',
+      notFound: 'No recorded merch sales for that show.',
+      error: 'I’m having trouble accessing merch sales right now.',
+    });
+    this.responseTemplates.set('flight_info', {
+      found: '✈️ Flights to {city}:\n\n{details}',
+      askTz: 'For flight times, do you want airport local time, your local time, or both?',
+      notFound: 'No upcoming flights found to {city}.',
+      error: 'I’m having trouble accessing flight information right now.',
+    });
+    this.templatesLoaded = true;
+  }
+  async generateResponse(params) {
+    const { message, intent, context, member } = params;
+    const _coerced = this.coerceFollowupIntent(message, intent, context);
+    if (_coerced) { intent = _coerced; console.log('[engine] followup->', intent.intent_type); }
+    console.log('[DEBUG][engine] intent=', intent?.intent_type, 'entities=', intent?.entities);
+
+    if (!this.templatesLoaded) {
+      await this.loadTemplates();
+    }
+
+    if (!intent || !intent.intent_type) {
+      return this.generateGeneralResponse(message, context, member);
+    }
+
+    try {
+      const intentType = intent.intent_type;
+
+      switch (intentType) {
+        case 'show_schedule':
+          return await this.handleShowSchedule(intent, member);
+        case 'venue_info':
+          return await this.handleVenueInfo(intent, member);
+        case 'setlist':
+          return await this.handleSetlist(intent, member);
+        case 'travel_info':
+          return await this.handleTravelInfo(intent, member);
+        case 'soundcheck':
+          return await this.handleSoundcheck(intent, member);
+        case 'production_notes':
+          return await this.handleProductionNotes(message, intent, member);
+        case 'merch_sales':
+          return await this.handleMerchSales(message, intent, member);
+        case 'flight_info':
+          return await this.handleFlightInfo(message, intent, member);
+        case 'production_info':
+        case 'amenities_info':
+        case 'personnel':
+        case 'access':
+        case 'media_info':
+        case 'merch_logistics':
+          return { content: commandHandlers[intentType](message, intent, member) };
+        case 'help':
+          return { content: commandHandlers.help() };
+        default:
+          return this.generateFallbackResponse(message, intent);
+      }
+    } catch (err) {
+      return {
+        content: 'I’m sorry, I hit a snag processing that. Please try again in a moment.',
+        metadata: { error: String(err?.message || err), engine: 'tm-ai' },
+      };
+    }
+  }
+  coerceFollowupIntent(message, intent, context) {
+    const txt = String(message || '').toLowerCase().trim();
+    const wantsAll = /(all of them|all shows|allb|bothb|every one|every show)b/.test(txt);
+    const last = context && context.lastPrompt;
+    if (wantsAll && last && last.intent === 'merch_sales' && last.multi_match && last.city) {
+      return { intent_type: 'merch_sales', entities: { city: last.city, all: true } };
+    }
+    return null;
+  }
+  async handleProductionNotes(message, intent, member) {
+    const tpl = this.responseTemplates.get('production_notes');
+    try {
+      const showId = intent.entities?.showId || intent.entities?.show_id;
+      const city = intent.entities?.city;
+      if (showId && !city) {
+        const rows = await this.dataSource.getProductionNotes(showId);
+        const details = this.formatProductionNotes(rows);
+        if (!details) {
+          return { content: tpl.notFound, metadata: { intent: 'production_notes', show_id: showId } };
+        }
+        const header = `Show ${showId}`;
+        return { content: tpl.found.replace('{header}', header).replace('{details}', details), metadata: { intent: 'production_notes', show_id: showId } };
+      }
+      if (!city) {
+        return this.generateClarification('production notes', 'city or show ID');
+      }
+      const { shows } = await this.dataSource.getShows({ city });
+      const list = Array.isArray(shows) ? shows : [];
+      if (list.length === 0) {
+        return { content: 'I couldn’t find any shows for that city.', metadata: { intent: 'production_notes', city } };
+      }
+      const allWanted = this.detectAllPhrase(message);
+      if (list.length > 1 && !allWanted) {
+        const dates = list.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
+        const clarify = (tpl.multiClarify || 'There are multiple shows in {city}: {dates}. Which show did you mean? (You can reply “all of them”.)').replace('{city}', city).replace('{dates}', dates);
+        return { content: clarify, metadata: { intent: 'production_notes', city, multi_match: true, options: list.map(s => ({ show_id: s.show_id, date: s.date })) } };
+      }
+      const target = allWanted ? list : [list[0]];
+      const blocks = [];
+      for (const s of target) {
+        const rows = await this.dataSource.getProductionNotes(s.show_id);
+        const details = this.formatProductionNotes(rows);
+        const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
+        blocks.push(details ? `**${header}**\n${details}` : `**${header}**\n(No production notes recorded.)`);
+      }
+      return {
+        content: blocks.join('\n\n'),
+        metadata: { intent: 'production_notes', city, count: target.length, all: allWanted },
+        entities: { city, count: target.length }
+      };
+    } catch (err) {
+      console.error('[ERROR][production_notes]', err);
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'production_notes' } };
+    }
+  }
+  async handleMerchSales(message, intent, member) {
+    const tpl = this.responseTemplates.get('merch_sales');
+    try {
+      const showId = intent.entities?.showId || intent.entities?.show_id;
+      const city = intent.entities?.city;
+      if (showId && !city) {
+        console.log("[DEBUG][merch_sales] fetching rows for showId=", showId);
+        let rows = await this.dataSource.getMerchSales(showId);
+        if ((rows == null || rows.length === 0) && typeof showId === "string" && showId.startsWith("#")) {
+          rows = await this.dataSource.getMerchSales(showId.slice(1));
+        }
+        const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
+        const details = this.formatMerchSales(arr, member);
+        if (!details) {
+          return { content: tpl.notFound, metadata: { intent: 'merch_sales', show_id: showId } };
+        }
+        const header = `Show ${showId}`;
+        return { content: tpl.found.replace('{header}', header).replace('{details}', details), metadata: { intent: 'merch_sales', show_id: showId } };
+      }
+      if (!city) {
+        return this.generateClarification('merch sales', 'city or show ID');
+      }
+      const { shows } = await this.dataSource.getShows({ city });
+      const list = Array.isArray(shows) ? shows : [];
+      if (list.length > 1) {
+        const wantsLast = /\b(last|latest|most recent)\b/i.test(message);
+        const wantsTotal = /\b(total|cumulative|overall|sum|all sales)\b/i.test(message);
+        const sorted = [...list].sort((a, b) => {
+          const ad = String(a.date || '');
+          const at = String(a.show_time || a.time || '');
+          const bd = String(b.date || '');
+          const bt = String(b.show_time || b.time || '');
+          return (ad + at).localeCompare(bd + bt);
+        });
+        if (wantsLast) {
+          const lastShow = sorted[sorted.length - 1];
+          let rows = await this.dataSource.getMerchSales(lastShow.show_id);
+          if ((!rows || rows.length === 0) && typeof lastShow.show_id === "string" && lastShow.show_id.startsWith("#")) {
+            rows = await this.dataSource.getMerchSales(lastShow.show_id.slice(1));
+          }
+          const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
+          const details = this.formatMerchSales(arr, member);
+          const header = `${city} — Last show (${this.formatDateDisplay(lastShow.date, lastShow.timezone || lastShow.venue_timezone)})`;
+          return { content: details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`, metadata: { intent: 'merch_sales', city, choice: 'last' } };
+        }
+        if (wantsTotal) {
+          const agg = new Map();
+          for (const s of sorted) {
+            let rows = await this.dataSource.getMerchSales(s.show_id);
+            if ((!rows || rows.length === 0) && typeof s.show_id === "string" && s.show_id.startsWith("#")) {
+              rows = await this.dataSource.getMerchSales(s.show_id.slice(1));
+            }
+            const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
+            for (const r of arr) {
+              const key = String(r.item || 'Unknown');
+              const prev = agg.get(key) || { item: key, quantity_sold: 0, price: '', gross_sales: 0 };
+              prev.quantity_sold += Number(r.quantity_sold || 0);
+              prev.gross_sales += Number(r.gross_sales || 0);
+              agg.set(key, prev);
+            }
+          }
+          const combined = Array.from(agg.values()).map(x => ({ ...x, gross_sales: Number(x.gross_sales).toFixed(2) }));
+          const details = this.formatMerchSales(combined, member);
+          const header = `${city} — Total sales across ${list.length} shows`;
+          return { content: details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`, metadata: { intent: 'merch_sales', city, choice: 'total', shows: list.length } };
+        }
+        const dates = sorted.map(s => this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)).join(', ');
+        const clarify = `There are multiple shows in ${city}: ${dates}. Would you like the last show or total sales for all ${city} shows?`;
+        return { content: clarify, metadata: { intent: 'merch_sales', city, multi_match: true, prompt: 'last_or_total' } };
+      }
+      const s = list[0];
+      let rows = await this.dataSource.getMerchSales(s.show_id);
+      if ((!rows || rows.length === 0) && typeof s.show_id === "string" && s.show_id.startsWith("#")) {
+        rows = await this.dataSource.getMerchSales(s.show_id.slice(1));
+      }
+      const arr = Array.isArray(rows) ? rows : (rows && rows.items) || [];
+      const details = this.formatMerchSales(arr, member);
+      const header = `${city} — ${this.formatDateDisplay(s.date, s.timezone || s.venue_timezone)}`;
+      return { content: details ? `**${header}**\n${details}` : `**${header}**\n(No merch sales recorded.)`, metadata: { intent: 'merch_sales', city, choice: 'single' } };
+    } catch (err) {
+      console.error('[ERROR][merch_sales]', err);
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'merch_sales' } };
+    }
+  }
+  async handleFlightInfo(message, intent, member) {
+    const tpl = this.responseTemplates.get('flight_info');
+    try {
+      const city = intent.entities?.city;
+      if (!city) {
+        return this.generateClarification('flight info', 'destination city');
+      }
+      const pref = member?.flight_time_pref || null;
+      if (!pref || pref === 'ask_each_time') {
+        return { content: tpl.askTz, metadata: { intent: 'flight_info', needs_preference: 'flight_time_pref', city } };
+      }
+      const data = await this.dataSource.getFlightsByDestination(city);
+      const list = Array.isArray(data?.flights) ? data.flights : (Array.isArray(data) ? data : []);
+      if (list.length === 0) {
+        return { content: tpl.notFound.replace('{city}', city), metadata: { intent: 'flight_info', city } };
+      }
+      const userTz = member?.user_timezone || this.defaultUserTimezone;
+      const lines = list.map(f => {
+        const dep = this.formatTimeDisplay(f.departure_time, f.departure_timezone, pref, userTz, true);
+        const arr = this.formatTimeDisplay(f.arrival_time, f.arrival_timezone, pref, userTz, true);
+        const head = `${f.airline || ''} ${f.flight_number || ''}`.trim();
+        const conf = f.confirmation ? ` · Conf: ${f.confirmation}` : '';
+        return `${head}
+${f.departure_city} → ${f.arrival_city}
+Departs: ${dep}
+Arrives: ${arr}${conf}`;
+      }).join('\n\n');
+      const header = (tpl.foundHeader || `✈️ Flights to ${city}:\n\n`);
+      return { content: `${header}${lines}`, metadata: { intent: 'flight_info', city, count: list.length } };
+    } catch (err) {
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'flight_info' } };
+    }
+  }
+  formatShowLine(index, show, member) {
+    const dateStr = this.formatDateDisplay(show.date, show.timezone || show.venue_timezone);
+    const locStr = [show.venue_name, show.city, show.state || show.country].filter(Boolean).join(', ');
+    const lineParts = [];
+    lineParts.push(`${index + 1}. ${dateStr}`);
+    lineParts.push(`   📍 ${locStr}`);
+    const tzPref = member?.timezone_preference || 'venue';
+    const userTz = member?.user_timezone || this.defaultUserTimezone;
+    if (show.doors_time) {
+      lineParts.push(`   🚪 Doors: ${this.formatTimeDisplay(show.doors_time, show.timezone, tzPref, userTz)}`);
+    }
+    if (show.show_time) {
+      lineParts.push(`   🎫 Show: ${this.formatTimeDisplay(show.show_time, show.timezone, tzPref, userTz)}`);
+    }
+    if (member?.role && (member.role === 'musician' || member.role === 'manager')) {
+      if (show.soundcheck_time) {
+        lineParts.push(`   🔊 Soundcheck: ${this.formatTimeDisplay(show.soundcheck_time, show.timezone, tzPref, userTz)}`);
+      }
+      if (show.load_in_time) {
+        lineParts.push(`   📦 Load-in: ${this.formatTimeDisplay(show.load_in_time, show.timezone, tzPref, userTz)}`);
+      }
+    }
+    if (show.ticket_status) {
+      lineParts.push(`   🎟️ ${show.ticket_status}`);
+    }
+    return lineParts.join('\n');
+  }
+  formatVenueDetails(v, member) {
+    const out = [];
+    out.push(`📍 ${v.name || 'Venue'}`);
+    if (v.address) {
+      const addr = [v.address.street, v.address.city, v.address.state, v.address.zip].filter(Boolean).join(', ');
+      out.push(`Address: ${addr}`);
+    }
+    if (v.capacity) out.push(`Capacity: ${Number(v.capacity).toLocaleString()}`);
+    if (v.phone) out.push(`Phone: ${v.phone}`);
+    if (v.website) out.push(`Website: ${v.website}`);
+    const role = member?.role || 'crew';
+    if (role === 'musician' || role === 'crew') {
+      if (v.parking_info) out.push(`Parking: ${v.parking_info}`);
+      if (v.load_in_info) out.push(`Load-in: ${v.load_in_info}`);
+    }
+    if (role === 'manager' || role === 'tour_manager') {
+      if (v.contact) {
+        const contact = [v.contact.name, v.contact.email, v.contact.phone].filter(Boolean).join(' · ');
+        if (contact) out.push(`Contact: ${contact}`);
+      }
+    }
+    return out.join('\n');
+  }
+  formatSetlist(data, member) {
+    const role = member?.role || 'crew';
+    if (Array.isArray(data?.sets) && data.sets.length) {
+      const blocks = data.sets.map((set, idx) => {
+        const title = set.name || `Set ${idx + 1}`;
+        const songs = (set.songs || []).map((song, i) => {
+          const parts = [`${i + 1}. ${song.title}`];
+          if (song.duration) parts.push(`(${song.duration})`);
+          if (song.notes && role === 'musician') parts.push(`- ${song.notes}`);
+          return parts.join(' ');
+        }).join('\n');
+        return `**${title}**\n${songs}`;
+      });
+      const total = data.total_duration ? `\n\nTotal runtime: ${data.total_duration}` : '';
+      return `${blocks.join('\n\n')}${total}`.trim();
+    }
+    if (Array.isArray(data?.songs) && data.songs.length) {
+      const list = data.songs.map((song, i) => {
+        const parts = [`${i + 1}. ${song.title}`];
+        if (song.duration) parts.push(`(${song.duration})`);
+        return parts.join(' ');
+      }).join('\n');
+      const total = data.total_duration ? `\n\nTotal runtime: ${data.total_duration}` : '';
+      return `${list}${total}`.trim();
+    }
+    return '';
+  }
+  formatTravelInfo(info, member) {
+    const out = [];
+    const role = member?.role || 'crew';
+    const tzPref = member?.timezone_preference || 'venue';
+    const userTz = member?.user_timezone || this.defaultUserTimezone;
+    if (Array.isArray(info?.flights) && info.flights.length) {
+      out.push('**Flights:**');
+      for (const f of info.flights) {
+        out.push(`${f.airline || ''} ${f.flight_number || ''}`.trim());
+        out.push(`${f.departure_city} → ${f.arrival_city}`);
+        if (f.departure_time) {
+          out.push(`Departs: ${this.formatTimeDisplay(f.departure_time, f.departure_timezone || info.timezone, tzPref, userTz, true)}`);
+        }
+        if (f.arrival_time) {
+          out.push(`Arrives: ${this.formatTimeDisplay(f.arrival_time, f.arrival_timezone || info.timezone, tzPref, userTz, true)}`);
+        }
+        if (f.confirmation && role !== 'crew') {
+          out.push(`Confirmation: ${f.confirmation}`);
+        }
+        out.push('');
+      }
+    }
+    if (info?.hotel) {
+      out.push('**Hotel:**');
+      out.push(`${info.hotel.name}`);
+      if (info.hotel.address) out.push(`${info.hotel.address}`);
+      if (info.hotel.check_in_date) out.push(`Check-in: ${this.formatDateDisplay(info.hotel.check_in_date, info.timezone)}`);
+      if (info.hotel.check_out_date) out.push(`Check-out: ${this.formatDateDisplay(info.hotel.check_out_date, info.timezone)}`);
+      if (info.hotel.confirmation && role !== 'crew') out.push(`Confirmation: ${info.hotel.confirmation}`);
+      out.push('');
+    }
+    if (info?.ground_transport) {
+      out.push('**Ground Transportation:**');
+      out.push(`${info.ground_transport.type}`);
+      if (info.ground_transport.pickup_time) {
+        const pickup = this.formatTimeDisplay(info.ground_transport.pickup_time, info.timezone, member?.timezone_preference || 'venue', member?.user_timezone || this.defaultUserTimezone, true);
+        out.push(`Pickup: ${pickup} at ${info.ground_transport.pickup_location || 'TBD'}`);
+      }
+    }
+    return out.join('\n').trim();
+  }
+  formatSoundcheckInfo(data, _member) {
+    const out = [];
+    const tzPref = _member?.timezone_preference || 'venue';
+    const userTz = _member?.user_timezone || this.defaultUserTimezone;
+    const venueTz = data?.timezone;
+    if (Array.isArray(data?.schedule) && data.schedule.length) {
+      for (const item of data.schedule) {
+        const time = item.time ? this.formatTimeDisplay(item.time, venueTz, tzPref, userTz, true) : 'TBD';
+        out.push(`${time} - ${item.activity}`);
+        if (item.notes) out.push(`   ${item.notes}`);
+      }
+    }
+    if (data?.technical_notes && (_member?.role === 'musician' || _member?.role === 'crew')) {
+      out.push(`\n**Technical Notes:**\n${data.technical_notes}`);
+    }
+    return out.join('\n').trim();
+  }
+  formatProductionNotes(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    const byCat = new Map();
+    for (const r of rows) {
+      const cat = (r.category || 'General').trim();
+      if (!byCat.has(cat)) byCat.set(cat, []);
+      byCat.get(cat).push(r);
+    }
+    const badge = (p) => {
+      const v = String(p || '').toLowerCase();
+      if (v.startsWith('h')) return '🔴 High';
+      if (v.startsWith('m')) return '🟠 Medium';
+      if (v.startsWith('l')) return '🟢 Low';
+      return '';
+    };
+    const blocks = [];
+    for (const [cat, items] of byCat.entries()) {
+      const lines = items.map(i => {
+        const b = badge(i.priority);
+        const who = i.created_by ? ` — ${i.created_by}` : '';
+        return `• ${i.note || ''}${b ? ` (${b})` : ''}${who}`;
+      });
+      blocks.push(`**${cat}**\n${lines.join('\n')}`);
+    }
+    return blocks.join('\n\n').trim();
+  }
+  formatMerchSales(rows, member) {
+    if (!Array.isArray(rows) || rows.length === 0) return '';
+    const fmtNum = (n) => {
+      const v = Number(n);
+      return Number.isFinite(v) ? v.toLocaleString(member?.number_locale || 'en-US') : String(n || '');
+    };
+    let totalQty = 0;
+    let totalGross = 0;
+    const lines = rows.map(r => {
+      const qty = Number(r.quantity_sold) || 0;
+      const price = Number(r.price);
+      const gross = Number(r.gross_sales);
+      totalQty += qty;
+      if (Number.isFinite(gross)) totalGross += gross;
+      const priceStr = Number.isFinite(price) ? price.toFixed(2) : String(r.price || '');
+      const grossStr = Number.isFinite(gross) ? gross.toFixed(2) : String(r.gross_sales || '');
+      return `• ${r.item || 'Item'} — Qty: ${fmtNum(qty)} · Price: ${priceStr} · Gross: ${grossStr}`;
+    });
+    const totals = `\n**Totals:** Qty ${fmtNum(totalQty)} · Gross ${totalGross.toFixed(2)}`;
+    return lines.join('\n') + totals;
+  }
+  formatFlightList(flights, member) {
+    const pref = member?.flight_time_pref || 'venue';
+    const userTz = member?.user_timezone || this.defaultUserTimezone;
+    const blockFor = (f) => {
+      const head = `${(f.airline || '').trim()} ${(f.flight_number || '').trim()}`.trim();
+      const route = `${f.departure_city} → ${f.arrival_city}`;
+      const dep = f.departure_time ? this.formatTimeDisplay(f.departure_time, f.departure_timezone, pref, userTz, true) : 'TBD';
+      const arr = f.arrival_time ? this.formatTimeDisplay(f.arrival_time, f.arrival_timezone, pref, userTz, true) : 'TBD';
+      const parts = [];
+      parts.push(head || 'Flight');
+      if (f.date) parts.push(this.formatDateDisplay(f.date));
+      parts.push(route);
+      parts.push(`Departs: ${dep}`);
+      parts.push(`Arrives: ${arr}`);
+      if (f.confirmation && member?.role && (member.role === 'manager' || member.role === 'tour_manager')) {
+        parts.push(`Confirmation: ${f.confirmation}`);
+      }
+      return parts.join('\n');
+    };
+    return flights.map(blockFor).join('\n\n');
+  }
+  buildShowFilters(entities = {}) {
+    const filters = {};
+    if (entities.city) filters.city = entities.city;
+    if (entities.upcoming) filters.upcoming = true;
+    if (entities.past) filters.past = true;
+    if (entities.date_from) filters.date_from = entities.date_from;
+    if (entities.date_to) filters.date_to = entities.date_to;
+    return filters;
+  }
+  formatDateDisplay(dateIsoOrYmd, timeZone) {
+    const d = new Date(dateIsoOrYmd);
+    if (Number.isNaN(d.getTime())) return String(dateIsoOrYmd);
+    const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    if (timeZone) opts.timeZone = timeZone;
+    const main = new Intl.DateTimeFormat('en-US', opts).format(d);
+    return main;
+  }
+  formatTimeDisplay(isoOrLocal, venueTimeZone, preference = 'venue', userTimeZone = 'UTC', includeDate = false) {
+    const isLikelyISO = /T/.test(isoOrLocal) && /Z|[+\-]\d{2}:\d{2}$/.test(isoOrLocal);
+    const fmOpts = includeDate ? { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { hour: 'numeric', minute: '2-digit' };
+    if (isLikelyISO) {
+      const dt = new Date(isoOrLocal);
+      if (Number.isNaN(dt.getTime())) return String(isoOrLocal);
+      const venueStr = new Intl.DateTimeFormat('en-US', { ...fmOpts, timeZone: venueTimeZone }).format(dt);
+      const userStr = new Intl.DateTimeFormat('en-US', { ...fmOpts, timeZone: userTimeZone }).format(dt);
+      if (preference === 'venue') return `${venueStr} ${this.tzAbbr(venueTimeZone, dt)}`;
+      if (preference === 'user_local') return `${userStr}`;
+      return `${venueStr} ${this.tzAbbr(venueTimeZone, dt)} (${userStr} your time)`;
+    }
+    const label = venueTimeZone ? ` ${this.tzAbbr(venueTimeZone)}` : '';
+    if (preference === 'venue' || preference === 'both') return `${isoOrLocal}${label}`;
+    return `${isoOrLocal}`;
+  }
+  tzAbbr(timeZone, when = new Date()) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short', hour: '2-digit', }).formatToParts(when);
+      const tz = parts.find((p) => p.type === 'timeZoneName')?.value;
+      return tz ? tz.replace(/^GMT([+\-]\d+)?$/, 'GMT$1') : '';
+    } catch {
+      return '';
+    }
+  }
+  extractResponseEntitiesFromShowList(shows) {
+    const first = shows[0] || {};
+    return { date: first.date, city: first.city, venue_id: first.venue_id, };
+  }
+  extractResponseEntitiesFromVenue(v) {
+    return { venue_id: v.venue_id || v.id, city: v?.address?.city };
+  }
+  extractResponseEntitiesFromSetlist(d) {
+    return { show_id: d?.show_id, date: d?.date };
+  }
+  extractResponseEntitiesFromTravel(info) {
+    return { date: info?.date || undefined, show_id: info?.show_id || undefined };
+  }
+  extractResponseEntitiesFromSoundcheck(data) {
+    return { show_id: data?.show_id, date: data?.date };
+  }
+  async generateGeneralResponse(message, _context, member) {
+    const lower = (message || '').toLowerCase();
+    const greetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening'];
+    if (greetings.some((g) => lower.includes(g))) {
+      const name = member?.full_name || member?.username || 'there';
+      return { content: `Hey ${name}! I can help with shows, venues, setlists, travel, and schedules. What do you need?`, metadata: { type: 'greeting' }, };
+    }
+    if (lower.includes('thank')) {
+      return { content: 'You’re welcome! Need anything else?', metadata: { type: 'thanks' }, };
+    }
+    return { content: 'I can help you with show schedules, venue info, setlists, travel details, and soundcheck times. What would you like to know?', metadata: { type: 'help' }, };
+  }
+  generateClarification(intentType, needed) {
+    return { content: `I understand you’re asking about ${intentType.replace('_', ' ')}, but I need a ${needed} to proceed.`, metadata: { intent: intentType, needs_clarification: true }, };
+  }
+  generateFallbackResponse(_message, intent) {
+    return { content: 'I understand what you’re asking, but I need a bit more detail. Can you add specifics (like city, date, or an ID)?', metadata: { intent: intent.intent_type, needs_clarification: true }, };
+  }
+  detectAllPhrase(message) {
+    const m = String(message || '').toLowerCase();
+    return /\b(all( of them| shows)?|everything|both|show all)\b/.test(m);
+  }
+}
+module.exports = TmAiEngine;

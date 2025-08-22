@@ -1,0 +1,59 @@
+*** Begin Patch
+*** Update File: backend/services/tmAiEngine.js
+@@
+-  async generateResponse(params) {
+-    const { message, intent, context, member } = params;
+-    const _coerced = this.coerceFollowupIntent(message, intent, context);
+-    if (_coerced) { intent = _coerced; console.log('[engine] followup->', intent.intent_type); }
+-    console.log('[DEBUG][engine] intent=', intent?.intent_type, 'entities=', intent?.entities);
++  async generateResponse(params) {
++    const { message, context, member } = params;
++    let effectiveIntent = params.intent;
++    const _coerced = this.coerceFollowupIntent(message, effectiveIntent, context);
++    if (_coerced) { effectiveIntent = _coerced; console.log('[engine] followup->', effectiveIntent.intent_type); }
++    console.log('[DEBUG][engine] intent=', effectiveIntent?.intent_type, 'entities=', effectiveIntent?.entities);
+@@
+-    if (!intent || !intent.intent_type) {
++    if (!effectiveIntent || !effectiveIntent.intent_type) {
+       return this.generateGeneralResponse(message, context, member);
+     }
+@@
+-      const intentType = intent.intent_type;
++      const intentType = effectiveIntent.intent_type;
+@@
+-        case 'production_notes':
+-          return await this.handleProductionNotes(message, intent, member);
+-        case 'merch_sales':
+-          return await this.handleMerchSales(message, intent, member);
+-        case 'flight_info':
+-          return await this.handleFlightInfo(message, intent, member);
++        case 'production_notes':
++          return await this.handleProductionNotes(message, effectiveIntent, member);
++        case 'merch_sales':
++          return await this.handleMerchSales(message, effectiveIntent, member);
++        case 'flight_info':
++          return await this.handleFlightInfo(message, effectiveIntent, member);
+@@
+-        case 'production_info':
+-        case 'amenities_info':
+-        case 'personnel':
+-        case 'access':
+-        case 'media_info':
+-        case 'merch_logistics':
+-          return { content: commandHandlers[intentType](message, intent, member) };
++        case 'production_info':
++        case 'amenities_info':
++        case 'personnel':
++        case 'access':
++        case 'media_info':
++        case 'merch_logistics':
++          if (typeof commandHandlers[intentType] === 'function') {
++            return { content: commandHandlers[intentType](message, effectiveIntent, member) };
++          }
++          return this.generateFallbackResponse(message, effectiveIntent);
+@@
+-        default:
+-          return this.generateFallbackResponse(message, intent);
++        default:
++          return this.generateFallbackResponse(message, effectiveIntent);
+*** End Patch

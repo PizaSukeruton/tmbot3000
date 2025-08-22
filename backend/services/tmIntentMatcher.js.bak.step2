@@ -1,0 +1,85 @@
+// services/tmIntentMatcher.js
+// Purpose: Turn natural language into structured intents + entities for TmBot3000.
+// This version connects to the PostgreSQL database for dynamic term matching.
+'use strict';
+const pool = require('../db/pool');
+const { cleanName } = require('../utils/textUtils');
+
+const CACHE_TTL_MS = 60_000; // Cache terms for 1 minute
+
+class TmIntentMatcher {
+  constructor() {
+    this.termsByAlias = new Map();
+    this.lastRefreshed = 0;
+  }
+
+  async refreshTerms() {
+    if (Date.now() - this.lastRefreshed < CACHE_TTL_MS) {
+      return;
+    }
+    const client = await pool.connect();
+    try {
+      const { rows } = await client.query('SELECT term, category, aliases FROM industry_terms');
+      this.termsByAlias.clear();
+      for (const row of rows) {
+        this.termsByAlias.set(cleanName(row.term), row.category);
+        if (Array.isArray(row.aliases)) {
+          for (const alias of row.aliases) {
+            this.termsByAlias.set(cleanName(alias), row.category);
+          }
+        }
+      }
+      this.lastRefreshed = Date.now();
+    } finally {
+      client.release();
+    }
+  }
+
+  async matchIntent(message, context = {}, member = {}) {
+    await this.refreshTerms();
+    const original_query = String(message || '');
+    const q = cleanName(original_query);
+    const qLower = q.toLowerCase();
+
+    // Fast-path for help and other fixed keywords
+    if (isHelpQuery(qLower)) {
+        return { intent_type: 'help', confidence: 0.99, entities: {} };
+    }
+
+    let bestMatch = null;
+    let bestScore = 0;
+
+    for (const [alias, category] of this.termsByAlias.entries()) {
+      if (qLower.includes(alias)) {
+        let score = (alias.length / qLower.length);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = { term: alias, category };
+        }
+      }
+    }
+
+    if (bestMatch && bestScore > 0.5) {
+      return {
+        intent_type: bestMatch.category,
+        confidence: Math.min(0.9, bestScore),
+        entities: { term: bestMatch.term, category: bestMatch.category }
+      };
+    }
+
+    return { intent_type: null, confidence: 0, entities: {} };
+  }
+}
+
+const HELP_PATTERNS = [
+    /^\s*help\s*$/i,
+    /^\s*help\b/i,
+    /^\s*what can i ask( you)?\??\s*$/i,
+    /^\s*what can you do\??\s*$/i,
+    /^\s*commands?\s*$/i
+];
+function isHelpQuery(q){ return HELP_PATTERNS.some(rx => rx.test(q)); }
+
+module.exports = new TmIntentMatcher();
+
+// Small utility helpers for text processing

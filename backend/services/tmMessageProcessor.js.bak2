@@ -1,0 +1,325 @@
+// services/tmMessageProcessor.js
+// TmBot3000 — Message processor
+// Orchestrates: intent matching → AI response → DB persistence → session context updates
+//
+// Dependencies (injectable):
+//   - pool:           PostgreSQL pool (../db/pool)
+//   - intentMatcher:  { matchIntent(message, context?, member?) => Promise<Intent> }
+//   - aiEngine:       { generateResponse({ message, intent, context, member }) => Promise<{content, metadata?, entities?}> }
+//   - generateHexId:  async (idType) => '#A1B2C3' (with # prefix)
+//
+// Tables (IDs stored WITH a leading '#'):
+//   tm_chat_sessions(session_id, member_id, started_at, last_activity, is_active, session_metadata jsonb)
+//   tm_chat_messages(message_id, session_id, sender_type, content, intent, entities jsonb, created_at)
+//
+// Notes:
+// - External work (NLU + AI) happens OUTSIDE the DB transaction.
+// - All writes inside a single transaction using the SAME client.
+// - Context window: last 10 messages (chronological).
+// - Graceful fallback if NLU/AI fails.
+
+'use strict';
+
+const DEFAULT_CONTEXT_WINDOW = 10;
+
+class TmMessageProcessor {
+  /**
+   * @param {object} deps
+   * @param {import('pg').Pool} deps.pool
+   * @param {{ matchIntent: Function }} deps.intentMatcher
+   * @param {{ generateResponse: Function }} deps.aiEngine
+   * @param {(idType:string)=>Promise<string>} deps.generateHexId
+   */
+  constructor({ pool, intentMatcher, aiEngine, generateHexId }) {
+    if (!pool) throw new Error('tmMessageProcessor: pool is required');
+    if (!intentMatcher) throw new Error('tmMessageProcessor: intentMatcher is required');
+    if (!aiEngine) throw new Error('tmMessageProcessor: aiEngine is required');
+    if (!generateHexId) throw new Error('tmMessageProcessor: generateHexId is required');
+
+    this.pool = pool;
+    this.intentMatcher = intentMatcher;
+    this.aiEngine = aiEngine;
+    this.generateHexId = generateHexId;
+
+    this.contextWindow = DEFAULT_CONTEXT_WINDOW;
+  }
+
+  /**
+   * Main entrypoint: process a single user message end-to-end.
+   * @param {object} params
+   * @param {string} params.sessionId  e.g. '#800001' (optional: will be created if missing)
+   * @param {string} params.memberId   e.g. '#700001' (required to create a session)
+   * @param {string} params.content    user’s message
+   * @param {object} [params.context]  optional extra context
+   * @returns {Promise<{success:boolean, data?:object, error?:string}>}
+   */
+  async processMessage({ sessionId, memberId, content, context = {} }) {
+    if (!memberId || typeof memberId !== 'string') {
+      return { success: false, error: 'memberId is required' };
+    }
+    if (!content || typeof content !== 'string') {
+      return { success: false, error: 'content is required' };
+    }
+
+    try {
+      // 0) Ensure session exists (create if needed)
+      let activeSessionId = sessionId;
+      const existing = activeSessionId ? await this.getSession(activeSessionId) : null;
+      if (!existing) {
+        const created = await this.createSession(memberId);
+        activeSessionId = created.session_id;
+      }
+
+      // 1) Gather read-only data OUTSIDE any transaction
+      const [member, convoContext] = await Promise.all([
+        this.getMemberInfo(memberId),
+        this.getSessionContext(activeSessionId, this.contextWindow),
+      ]);
+
+      // 2) Intent matching + AI response (external work OUTSIDE transaction)
+      let intent, aiResponse;
+      try {
+        intent = await this.intentMatcher.matchIntent(content, { last_entities: this.pickLastEntities(convoContext) }, member);
+} catch (e) {
+  intent = {
+    intent_type: null,
+    confidence: 0,
+    entities: {},
+    original_query: content,
+    error: String(e?.message || e),
+  };
+}      }
+
+      try {
+        aiResponse = await this.aiEngine.generateResponse({
+          message: content,
+          intent,
+          context: convoContext,
+          member,
+        });
+} catch (e) {
+  intent = {
+    intent_type: null,
+    confidence: 0,
+    entities: {},
+    original_query: content,
+    error: String(e?.message || e),
+  };
+}          entities: {},
+        };
+      }
+
+      // 3) Persist BOTH user + bot messages atomically
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const userMessageId = await this.saveMessage({
+          client,
+          sessionId: activeSessionId,
+          senderType: 'user',
+          content,
+          intent: null,          // we log the raw user message without intent
+          entities: null,
+        });
+
+        const botMessageId = await this.saveMessage({
+          client,
+          sessionId: activeSessionId,
+          senderType: 'bot',
+          content: String(aiResponse?.content || ''),
+          intent: intent?.intent_type || null,
+          entities: aiResponse?.entities ? aiResponse.entities : (intent?.entities || null),
+        });
+
+        // Update session activity + context metadata (last intent/entities)
+        await this.updateSessionActivity(client, activeSessionId, {
+          last_intent: intent?.intent_type || null,
+          last_entities: aiResponse?.entities || intent?.entities || null,
+          last_confidence: intent?.confidence ?? null,
+        });
+
+        await client.query('COMMIT');
+
+        return {
+          success: true,
+          data: {
+            sessionId: activeSessionId,
+            userMessageId,
+            botMessageId,
+            response: aiResponse?.content || '',
+            intent: intent?.intent_type || null,
+            entities: aiResponse?.entities || intent?.entities || {},
+          },
+        };
+      } catch (txErr) {
+        try { await client.query('ROLLBACK'); } catch {}
+        return { success: false, error: `DB transaction failed: ${String(txErr?.message || txErr)}` };
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      return { success: false, error: String(err?.message || err) };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers (DB + context)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Create a new chat session for memberId.
+   * @param {string} memberId
+   * @returns {Promise<{session_id:string}>}
+   */
+  async createSession(memberId) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const sessionId = await this.generateHexId('chat_session_id'); // '#8xxxxx'
+      const q = `
+        INSERT INTO tm_chat_sessions (session_id, member_id, started_at, last_activity, is_active, session_metadata)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true, '{}'::jsonb)
+        RETURNING session_id
+      `;
+      const { rows } = await client.query(q, [sessionId, memberId]);
+      await client.query('COMMIT');
+      return { session_id: rows[0].session_id };
+} catch (e) {
+  intent = {
+    intent_type: null,
+    confidence: 0,
+    entities: {},
+    original_query: content,
+    error: String(e?.message || e),
+  };
+}      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Fetch session row (or null).
+   * @param {string} sessionId
+   */
+  async getSession(sessionId) {
+    const q = `SELECT session_id FROM tm_chat_sessions WHERE session_id = $1 AND is_active = true`;
+    const { rows } = await this.pool.query(q, [sessionId]);
+    return rows[0] || null;
+  }
+
+  /**
+   * Get last N messages (chronological order).
+   * @param {string} sessionId
+   * @param {number} limit
+   * @returns {Promise<Array<{message_id, sender_type, content, intent, entities, created_at}>>}
+   */
+  async getSessionContext(sessionId, limit = DEFAULT_CONTEXT_WINDOW) {
+    const q = `
+      SELECT message_id, sender_type, content, intent, entities, created_at
+      FROM tm_chat_messages
+      WHERE session_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `;
+    const { rows } = await this.pool.query(q, [sessionId, limit]);
+    return rows.reverse();
+  }
+
+  /**
+   * Save a message (user/bot/system) with generated hex ID.
+   * MUST be called with the SAME transaction client as other writes.
+   * @param {object} params
+   * @param {import('pg').PoolClient} params.client
+   * @param {string} params.sessionId
+   * @param {'user'|'bot'|'system'} params.senderType
+   * @param {string} params.content
+   * @param {string|null} params.intent
+   * @param {object|null} params.entities
+   * @returns {Promise<string>} message_id
+   */
+  async saveMessage({ client, sessionId, senderType, content, intent, entities }) {
+    const messageId = await this.generateHexId('MESSAGE'); // '#9xxxxx'
+    const q = `
+      INSERT INTO tm_chat_messages
+        (message_id, session_id, sender_type, content, intent, entities, created_at)
+      VALUES
+        ($1,        $2,         $3,          $4,      $5,     $6::jsonb, CURRENT_TIMESTAMP)
+      RETURNING message_id
+    `;
+    const { rows } = await client.query(q, [
+      messageId,
+      sessionId,
+      senderType,
+      content,
+      intent,
+      entities ? JSON.stringify(entities) : null,
+    ]);
+    return rows[0].message_id;
+  }
+
+  /**
+   * Update session activity and merge session_metadata with patch (jsonb).
+   * @param {import('pg').PoolClient} client
+   * @param {string} sessionId
+   * @param {object} metadataPatch
+   */
+  async updateSessionActivity(client, sessionId, metadataPatch = {}) {
+    const q = `
+      UPDATE tm_chat_sessions
+      SET
+        last_activity   = CURRENT_TIMESTAMP,
+        session_metadata = COALESCE(session_metadata, '{}'::jsonb) || $2::jsonb
+      WHERE session_id = $1
+    `;
+    await client.query(q, [sessionId, JSON.stringify(cleanJson(metadataPatch))]);
+  }
+
+  /**
+   * Minimal member profile for role/timezone-aware rendering.
+   * @param {string} memberId
+   * @returns {Promise<{member_id, username, full_name, role, user_timezone, timezone_preference}>}
+   */
+  async getMemberInfo(memberId) {
+    const q = `
+      SELECT member_id, username, full_name, role, user_timezone, timezone_preference
+      FROM tour_party
+      WHERE member_id = $1
+    `;
+    const { rows } = await this.pool.query(q, [memberId]);
+    return rows[0] || {};
+  }
+
+  /**
+   * Extract a lightweight “last_entities” object from recent context for matcher hints.
+   * @param {Array} ctx
+   */
+  pickLastEntities(ctx = []) {
+    // Look at the latest bot message that had entities
+    for (let i = ctx.length - 1; i >= 0; i--) {
+      const m = ctx[i];
+      if (m?.sender_type === 'bot' && m?.entities) return m.entities;
+    }
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Small utility helpers
+// ---------------------------------------------------------------------------
+
+function cleanJson(obj) {
+  if (!obj || typeof obj !== 'object') return {};
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+
+module.exports = TmMessageProcessor;
+

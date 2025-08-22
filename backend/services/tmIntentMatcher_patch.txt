@@ -1,0 +1,16 @@
+  soundcheck: [
+    'soundcheck', 'sound check', 'load in', 'load-in', 'load out', 'load-out',
+    'curfew', 'call time', 'call-time'
+  ],
+  production_notes: [
+    'production notes', 'production', 'prod notes', 'warnings', 'technical notes',
+    'technical requirements', 'tech notes', 'venue notes'
+  ],
+  merch_sales: [
+    'merch', 'merchandise', 'sales', 'merch sales', 'revenue',
+    'merchandise sales', 'merch revenue', 'sales figures'
+  ],
+  flight_info: [
+    'flight', 'flights', 'fly', 'flying', 'flight details', 'flight info',
+    'departure', 'arrival', 'airline', 'airport'
+  ]

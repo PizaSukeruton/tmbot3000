@@ -1,0 +1,86 @@
+// services/tmIntentMatcher.js
+const path = require('path');
+const { createCsvDataSource } = require('./csvDataSource');
+const DATA_DIR = process.env.TM_DATA_DIR || path.join(process.cwd(), 'data');
+const dataSource = createCsvDataSource({ dataDir: DATA_DIR });
+
+const HELP_PATTERNS = [
+  /^\s*help\s*$/i,
+  /^\s*help\b/i,
+  /^\s*what can i ask( you)?\??\s*$/i,
+  /^\s*what can you do\??\s*$/i,
+  /^\s*commands?\s*$/i
+];
+function isHelpQuery(q){ return HELP_PATTERNS.some(rx => rx.test(q)); }
+
+const INTENT_KEYWORDS = {
+  show_schedule: ['show','shows','tour dates','dates','what’s on','whats on','upcoming','schedule','set time','settime','onstage time','on stage time','support bands','support band set times','show day','travel day','day off'],
+  venue_info: ['venue','venue name','venue location','venue contact','loading dock','stage door','parking','dressing rooms','wifi password'],
+  setlist: ['setlist','set list','songs','what are we playing','song list'],
+  travel_info: ['flight','flights','flight number','flight time','hotel','lobby call','luggage allowance','oversized item','airport check in','self check in','group check in','travel day'],
+  soundcheck: ['soundcheck','sound check','load in','load-in','load out','load-out','curfew','call time','call-time','crew call','band call'],
+  production_notes: ['production notes','production','prod notes','warnings','technical notes','technical requirements','tech notes','venue notes','production manager','production meeting','production office','BOH','FOH','back stage power','onstage power','power supplies'],
+  merch_sales: ['merch','merchandise','sales','merch sales','revenue','merchandise sales','merch revenue','merch seller','merch stand','sales figures','buyout'],
+  flight_info: ['flight','flights','fly','flying','flight details','flight info','departure','arrival','airline','airport'],
+  personnel: ['production manager','drum tech','guitar tech','lighting tech','monitor tech','merch seller','foh tech','stage tech'],
+  amenities: ['catering','laundry','guest list','rider','hotel'],
+  media: ['press commitments'],
+  access: ['laminate','guest list']
+};
+const HARD_HINTS = [
+  { re: /\bset\s*list\b/i, intent: 'setlist', bonus: 0.15 },
+  { re: /\bon\s*stage time|\bset\s*time\b/i, intent: 'show_schedule', bonus: 0.10 },
+  { re: /\blobby[-\s]?call\b/i, intent: 'travel_info', bonus: 0.10 },
+  { re: /\bcurfew\b/i, intent: 'soundcheck', bonus: 0.10 },
+  { re: /\bload[-\s]?in\b/i, intent: 'soundcheck', bonus: 0.10 },
+];
+function extractDateMaybe(q) {
+  const m = q.match(/\b(20\d{2})[-\/\.](0?[1-9]|1[0-2])[-\/\.](0?[1-9]|[12]\d|3[01])\b/);
+  if (m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  if (/\btoday\b/i.test(q)) return new Date().toISOString().slice(0,10);
+  if (/\btomorrow\b/i.test(q)) {
+    const d = new Date(); d.setDate(d.getDate()+1);
+    return d.toISOString().slice(0,10);
+  }
+  return null;
+}
+function looksLikeScheduleQuestion(q){
+  return /\b(show|shows|date|dates|schedule|on\s*stage|set\s*time|what[’']?s on|whats on|upcoming)\b/i.test(q);
+}
+async function matchIntent(input) {
+  const q = String(input || '').trim();
+  if (isHelpQuery(q)) {
+    return { intent_type: 'help', confidence: 0.99, entities: {} };
+  }
+  const qlc = q.toLowerCase();
+  const scores = new Map();
+  for (const [intent, words] of Object.entries(INTENT_KEYWORDS)) {
+    let score = 0;
+    for (const w of words) {
+      if (qlc.includes(w)) score += 0.25;
+    }
+    scores.set(intent, score);
+  }
+  for (const hint of HARD_HINTS) {
+    if (hint.re.test(q)) {
+      scores.set(hint.intent, (scores.get(hint.intent) || 0) + hint.bonus);
+    }
+  }
+  let bestIntent = null, bestScore = 0;
+  for (const [intent, s] of scores.entries()) {
+    if (s > bestScore) { bestScore = s; bestIntent = intent; }
+  }
+  const entities = {};
+  if (bestIntent === 'show_schedule' && looksLikeScheduleQuestion(q)) {
+    const d = extractDateMaybe(q);
+    if (d) entities.date = d;
+  }
+  if (!bestIntent || bestScore < 0.25) {
+    return { intent_type: null, confidence: bestScore, entities };
+  }
+  return { intent_type: bestIntent, confidence: Math.min(0.9, bestScore), entities };
+}
+module.exports = {
+  matchIntent,
+  dataSource
+};

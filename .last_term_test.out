@@ -1,0 +1,5 @@
+Total: 813
+Positives: 805  Passed: 805
+Negatives: 8  Correctly Rejected: 8
+Precision: 1.0000  Recall: 1.0000  NegAcc: 1.0000
+✅ 100% on closed set

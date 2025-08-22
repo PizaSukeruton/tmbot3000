@@ -1,0 +1,813 @@
+{"input":"soundcheck","expect_term_id":"#604001"}
+{"input":"SOUNDCHECK","expect_term_id":"#604001"}
+{"input":"soundcheck!","expect_term_id":"#604001"}
+{"input":"soundcheck.","expect_term_id":"#604001"}
+{"input":"audio check","expect_term_id":"#604001"}
+{"input":"AUDIO CHECK","expect_term_id":"#604001"}
+{"input":"audio-check","expect_term_id":"#604001"}
+{"input":"audio check!","expect_term_id":"#604001"}
+{"input":"audio check.","expect_term_id":"#604001"}
+{"input":"audio  check","expect_term_id":"#604001"}
+{"input":"sound test","expect_term_id":"#604001"}
+{"input":"SOUND TEST","expect_term_id":"#604001"}
+{"input":"sound-test","expect_term_id":"#604001"}
+{"input":"sound test!","expect_term_id":"#604001"}
+{"input":"sound test.","expect_term_id":"#604001"}
+{"input":"sound  test","expect_term_id":"#604001"}
+{"input":"load in","expect_term_id":"#604002"}
+{"input":"LOAD IN","expect_term_id":"#604002"}
+{"input":"load-in","expect_term_id":"#604002"}
+{"input":"load in!","expect_term_id":"#604002"}
+{"input":"load in.","expect_term_id":"#604002"}
+{"input":"load  in","expect_term_id":"#604002"}
+{"input":"load out","expect_term_id":"#604003"}
+{"input":"LOAD OUT","expect_term_id":"#604003"}
+{"input":"load-out","expect_term_id":"#604003"}
+{"input":"load out!","expect_term_id":"#604003"}
+{"input":"load out.","expect_term_id":"#604003"}
+{"input":"load  out","expect_term_id":"#604003"}
+{"input":"curfew","expect_term_id":"#604004"}
+{"input":"CURFEW","expect_term_id":"#604004"}
+{"input":"curfew!","expect_term_id":"#604004"}
+{"input":"curfew.","expect_term_id":"#604004"}
+{"input":"cut off","expect_term_id":"#604004"}
+{"input":"CUT OFF","expect_term_id":"#604004"}
+{"input":"cut-off","expect_term_id":"#604004"}
+{"input":"cut off!","expect_term_id":"#604004"}
+{"input":"cut off.","expect_term_id":"#604004"}
+{"input":"cut  off","expect_term_id":"#604004"}
+{"input":"end time","expect_term_id":"#604004"}
+{"input":"END TIME","expect_term_id":"#604004"}
+{"input":"end-time","expect_term_id":"#604004"}
+{"input":"end time!","expect_term_id":"#604004"}
+{"input":"end time.","expect_term_id":"#604004"}
+{"input":"end  time","expect_term_id":"#604004"}
+{"input":"lobby call","expect_term_id":"#604005"}
+{"input":"LOBBY CALL","expect_term_id":"#604005"}
+{"input":"lobby-call","expect_term_id":"#604005"}
+{"input":"lobby call!","expect_term_id":"#604005"}
+{"input":"lobby call.","expect_term_id":"#604005"}
+{"input":"lobby  call","expect_term_id":"#604005"}
+{"input":"call time","expect_term_id":"#604005"}
+{"input":"CALL TIME","expect_term_id":"#604005"}
+{"input":"call-time","expect_term_id":"#604005"}
+{"input":"call time!","expect_term_id":"#604005"}
+{"input":"call time.","expect_term_id":"#604005"}
+{"input":"call  time","expect_term_id":"#604005"}
+{"input":"lobby time","expect_term_id":"#604005"}
+{"input":"LOBBY TIME","expect_term_id":"#604005"}
+{"input":"lobby-time","expect_term_id":"#604005"}
+{"input":"lobby time!","expect_term_id":"#604005"}
+{"input":"lobby time.","expect_term_id":"#604005"}
+{"input":"lobby  time","expect_term_id":"#604005"}
+{"input":"rider","expect_term_id":"#604006"}
+{"input":"RIDER","expect_term_id":"#604006"}
+{"input":"rider!","expect_term_id":"#604006"}
+{"input":"rider.","expect_term_id":"#604006"}
+{"input":"hospitality rider","expect_term_id":"#604006"}
+{"input":"HOSPITALITY RIDER","expect_term_id":"#604006"}
+{"input":"hospitality-rider","expect_term_id":"#604006"}
+{"input":"hospitality rider!","expect_term_id":"#604006"}
+{"input":"hospitality rider.","expect_term_id":"#604006"}
+{"input":"hospitality  rider","expect_term_id":"#604006"}
+{"input":"tech rider","expect_term_id":"#604006"}
+{"input":"TECH RIDER","expect_term_id":"#604006"}
+{"input":"tech-rider","expect_term_id":"#604006"}
+{"input":"tech rider!","expect_term_id":"#604006"}
+{"input":"tech rider.","expect_term_id":"#604006"}
+{"input":"tech  rider","expect_term_id":"#604006"}
+{"input":"day sheet","expect_term_id":"#604007"}
+{"input":"DAY SHEET","expect_term_id":"#604007"}
+{"input":"day-sheet","expect_term_id":"#604007"}
+{"input":"day sheet!","expect_term_id":"#604007"}
+{"input":"day sheet.","expect_term_id":"#604007"}
+{"input":"day  sheet","expect_term_id":"#604007"}
+{"input":"daysheet","expect_term_id":"#604007"}
+{"input":"DAYSHEET","expect_term_id":"#604007"}
+{"input":"daysheet!","expect_term_id":"#604007"}
+{"input":"daysheet.","expect_term_id":"#604007"}
+{"input":"schedule","expect_term_id":"#604007"}
+{"input":"SCHEDULE","expect_term_id":"#604007"}
+{"input":"schedule!","expect_term_id":"#604007"}
+{"input":"schedule.","expect_term_id":"#604007"}
+{"input":"FOH","expect_term_id":"#604008"}
+{"input":"foh","expect_term_id":"#604008"}
+{"input":"F.O.H","expect_term_id":"#604008"}
+{"input":"F.O.H.","expect_term_id":"#604008"}
+{"input":"FOH!","expect_term_id":"#604008"}
+{"input":"FOH.","expect_term_id":"#604008"}
+{"input":"front of house","expect_term_id":"#604008"}
+{"input":"FRONT OF HOUSE","expect_term_id":"#604008"}
+{"input":"front-of-house","expect_term_id":"#604008"}
+{"input":"front of house!","expect_term_id":"#604008"}
+{"input":"front of house.","expect_term_id":"#604008"}
+{"input":"front  of  house","expect_term_id":"#604008"}
+{"input":"monitor","expect_term_id":"#604009"}
+{"input":"MONITOR","expect_term_id":"#604009"}
+{"input":"monitor!","expect_term_id":"#604009"}
+{"input":"monitor.","expect_term_id":"#604009"}
+{"input":"stage monitor","expect_term_id":"#604009"}
+{"input":"STAGE MONITOR","expect_term_id":"#604009"}
+{"input":"stage-monitor","expect_term_id":"#604009"}
+{"input":"stage monitor!","expect_term_id":"#604009"}
+{"input":"stage monitor.","expect_term_id":"#604009"}
+{"input":"stage  monitor","expect_term_id":"#604009"}
+{"input":"wedge","expect_term_id":"#604009"}
+{"input":"WEDGE","expect_term_id":"#604009"}
+{"input":"wedge!","expect_term_id":"#604009"}
+{"input":"wedge.","expect_term_id":"#604009"}
+{"input":"per diem","expect_term_id":"#60400A"}
+{"input":"PER DIEM","expect_term_id":"#60400A"}
+{"input":"per-diem","expect_term_id":"#60400A"}
+{"input":"per diem!","expect_term_id":"#60400A"}
+{"input":"per diem.","expect_term_id":"#60400A"}
+{"input":"per  diem","expect_term_id":"#60400A"}
+{"input":"daily allowance","expect_term_id":"#60400A"}
+{"input":"DAILY ALLOWANCE","expect_term_id":"#60400A"}
+{"input":"daily-allowance","expect_term_id":"#60400A"}
+{"input":"daily allowance!","expect_term_id":"#60400A"}
+{"input":"daily allowance.","expect_term_id":"#60400A"}
+{"input":"daily  allowance","expect_term_id":"#60400A"}
+{"input":"PD","expect_term_id":"#60400A"}
+{"input":"pd","expect_term_id":"#60400A"}
+{"input":"PD!","expect_term_id":"#60400A"}
+{"input":"PD.","expect_term_id":"#60400A"}
+{"input":"catering","expect_term_id":"#60400B"}
+{"input":"CATERING","expect_term_id":"#60400B"}
+{"input":"catering!","expect_term_id":"#60400B"}
+{"input":"catering.","expect_term_id":"#60400B"}
+{"input":"craft services","expect_term_id":"#60400B"}
+{"input":"CRAFT SERVICES","expect_term_id":"#60400B"}
+{"input":"craft-services","expect_term_id":"#60400B"}
+{"input":"craft services!","expect_term_id":"#60400B"}
+{"input":"craft services.","expect_term_id":"#60400B"}
+{"input":"craft  services","expect_term_id":"#60400B"}
+{"input":"venue meals","expect_term_id":"#60400B"}
+{"input":"VENUE MEALS","expect_term_id":"#60400B"}
+{"input":"venue-meals","expect_term_id":"#60400B"}
+{"input":"venue meals!","expect_term_id":"#60400B"}
+{"input":"venue meals.","expect_term_id":"#60400B"}
+{"input":"venue  meals","expect_term_id":"#60400B"}
+{"input":"buyout","expect_term_id":"#60400C"}
+{"input":"BUYOUT","expect_term_id":"#60400C"}
+{"input":"buyout!","expect_term_id":"#60400C"}
+{"input":"buyout.","expect_term_id":"#60400C"}
+{"input":"food buyout","expect_term_id":"#60400C"}
+{"input":"FOOD BUYOUT","expect_term_id":"#60400C"}
+{"input":"food-buyout","expect_term_id":"#60400C"}
+{"input":"food buyout!","expect_term_id":"#60400C"}
+{"input":"food buyout.","expect_term_id":"#60400C"}
+{"input":"food  buyout","expect_term_id":"#60400C"}
+{"input":"meal buyout","expect_term_id":"#60400C"}
+{"input":"MEAL BUYOUT","expect_term_id":"#60400C"}
+{"input":"meal-buyout","expect_term_id":"#60400C"}
+{"input":"meal buyout!","expect_term_id":"#60400C"}
+{"input":"meal buyout.","expect_term_id":"#60400C"}
+{"input":"meal  buyout","expect_term_id":"#60400C"}
+{"input":"runner","expect_term_id":"#60400D"}
+{"input":"RUNNER","expect_term_id":"#60400D"}
+{"input":"runner!","expect_term_id":"#60400D"}
+{"input":"runner.","expect_term_id":"#60400D"}
+{"input":"driver","expect_term_id":"#60400D"}
+{"input":"DRIVER","expect_term_id":"#60400D"}
+{"input":"driver!","expect_term_id":"#60400D"}
+{"input":"driver.","expect_term_id":"#60400D"}
+{"input":"gopher","expect_term_id":"#60400D"}
+{"input":"GOPHER","expect_term_id":"#60400D"}
+{"input":"gopher!","expect_term_id":"#60400D"}
+{"input":"gopher.","expect_term_id":"#60400D"}
+{"input":"onstage time","expect_term_id":"#60400E"}
+{"input":"ONSTAGE TIME","expect_term_id":"#60400E"}
+{"input":"onstage-time","expect_term_id":"#60400E"}
+{"input":"onstage time!","expect_term_id":"#60400E"}
+{"input":"onstage time.","expect_term_id":"#60400E"}
+{"input":"onstage  time","expect_term_id":"#60400E"}
+{"input":"show time","expect_term_id":"#60400E"}
+{"input":"SHOW TIME","expect_term_id":"#60400E"}
+{"input":"show-time","expect_term_id":"#60400E"}
+{"input":"show time!","expect_term_id":"#60400E"}
+{"input":"show time.","expect_term_id":"#60400E"}
+{"input":"show  time","expect_term_id":"#60400E"}
+{"input":"stage time","expect_term_id":"#60400E"}
+{"input":"STAGE TIME","expect_term_id":"#60400E"}
+{"input":"stage-time","expect_term_id":"#60400E"}
+{"input":"stage time!","expect_term_id":"#60400E"}
+{"input":"stage time.","expect_term_id":"#60400E"}
+{"input":"stage  time","expect_term_id":"#60400E"}
+{"input":"db limit","expect_term_id":"#60400F"}
+{"input":"DB LIMIT","expect_term_id":"#60400F"}
+{"input":"db-limit","expect_term_id":"#60400F"}
+{"input":"db limit!","expect_term_id":"#60400F"}
+{"input":"db limit.","expect_term_id":"#60400F"}
+{"input":"db  limit","expect_term_id":"#60400F"}
+{"input":"decibel limit","expect_term_id":"#60400F"}
+{"input":"DECIBEL LIMIT","expect_term_id":"#60400F"}
+{"input":"decibel-limit","expect_term_id":"#60400F"}
+{"input":"decibel limit!","expect_term_id":"#60400F"}
+{"input":"decibel limit.","expect_term_id":"#60400F"}
+{"input":"decibel  limit","expect_term_id":"#60400F"}
+{"input":"sound limit","expect_term_id":"#60400F"}
+{"input":"SOUND LIMIT","expect_term_id":"#60400F"}
+{"input":"sound-limit","expect_term_id":"#60400F"}
+{"input":"sound limit!","expect_term_id":"#60400F"}
+{"input":"sound limit.","expect_term_id":"#60400F"}
+{"input":"sound  limit","expect_term_id":"#60400F"}
+{"input":"flight time","expect_term_id":"#604010"}
+{"input":"FLIGHT TIME","expect_term_id":"#604010"}
+{"input":"flight-time","expect_term_id":"#604010"}
+{"input":"flight time!","expect_term_id":"#604010"}
+{"input":"flight time.","expect_term_id":"#604010"}
+{"input":"flight  time","expect_term_id":"#604010"}
+{"input":"departure time","expect_term_id":"#604010"}
+{"input":"DEPARTURE TIME","expect_term_id":"#604010"}
+{"input":"departure-time","expect_term_id":"#604010"}
+{"input":"departure time!","expect_term_id":"#604010"}
+{"input":"departure time.","expect_term_id":"#604010"}
+{"input":"departure  time","expect_term_id":"#604010"}
+{"input":"travel distance","expect_term_id":"#604011"}
+{"input":"TRAVEL DISTANCE","expect_term_id":"#604011"}
+{"input":"travel-distance","expect_term_id":"#604011"}
+{"input":"travel distance!","expect_term_id":"#604011"}
+{"input":"travel distance.","expect_term_id":"#604011"}
+{"input":"travel  distance","expect_term_id":"#604011"}
+{"input":"drive time","expect_term_id":"#604011"}
+{"input":"DRIVE TIME","expect_term_id":"#604011"}
+{"input":"drive-time","expect_term_id":"#604011"}
+{"input":"drive time!","expect_term_id":"#604011"}
+{"input":"drive time.","expect_term_id":"#604011"}
+{"input":"drive  time","expect_term_id":"#604011"}
+{"input":"travel time","expect_term_id":"#604011"}
+{"input":"TRAVEL TIME","expect_term_id":"#604011"}
+{"input":"travel-time","expect_term_id":"#604011"}
+{"input":"travel time!","expect_term_id":"#604011"}
+{"input":"travel time.","expect_term_id":"#604011"}
+{"input":"travel  time","expect_term_id":"#604011"}
+{"input":"press schedule","expect_term_id":"#604012"}
+{"input":"PRESS SCHEDULE","expect_term_id":"#604012"}
+{"input":"press-schedule","expect_term_id":"#604012"}
+{"input":"press schedule!","expect_term_id":"#604012"}
+{"input":"press schedule.","expect_term_id":"#604012"}
+{"input":"press  schedule","expect_term_id":"#604012"}
+{"input":"media schedule","expect_term_id":"#604012"}
+{"input":"MEDIA SCHEDULE","expect_term_id":"#604012"}
+{"input":"media-schedule","expect_term_id":"#604012"}
+{"input":"media schedule!","expect_term_id":"#604012"}
+{"input":"media schedule.","expect_term_id":"#604012"}
+{"input":"media  schedule","expect_term_id":"#604012"}
+{"input":"press day","expect_term_id":"#604012"}
+{"input":"PRESS DAY","expect_term_id":"#604012"}
+{"input":"press-day","expect_term_id":"#604012"}
+{"input":"press day!","expect_term_id":"#604012"}
+{"input":"press day.","expect_term_id":"#604012"}
+{"input":"press  day","expect_term_id":"#604012"}
+{"input":"meet and greet","expect_term_id":"#604013"}
+{"input":"MEET AND GREET","expect_term_id":"#604013"}
+{"input":"meet-and-greet","expect_term_id":"#604013"}
+{"input":"meet and greet!","expect_term_id":"#604013"}
+{"input":"meet and greet.","expect_term_id":"#604013"}
+{"input":"meet  and  greet","expect_term_id":"#604013"}
+{"input":"M&G","expect_term_id":"#604013"}
+{"input":"m&g","expect_term_id":"#604013"}
+{"input":"M&G!","expect_term_id":"#604013"}
+{"input":"M&G.","expect_term_id":"#604013"}
+{"input":"VIP meet","expect_term_id":"#604013"}
+{"input":"vip meet","expect_term_id":"#604013"}
+{"input":"VIP MEET","expect_term_id":"#604013"}
+{"input":"VIP-meet","expect_term_id":"#604013"}
+{"input":"VIP meet!","expect_term_id":"#604013"}
+{"input":"VIP meet.","expect_term_id":"#604013"}
+{"input":"VIP  meet","expect_term_id":"#604013"}
+{"input":"airport check in","expect_term_id":"#604014"}
+{"input":"AIRPORT CHECK IN","expect_term_id":"#604014"}
+{"input":"airport-check-in","expect_term_id":"#604014"}
+{"input":"airport check in!","expect_term_id":"#604014"}
+{"input":"airport check in.","expect_term_id":"#604014"}
+{"input":"airport  check  in","expect_term_id":"#604014"}
+{"input":"back stage power","expect_term_id":"#604015"}
+{"input":"BACK STAGE POWER","expect_term_id":"#604015"}
+{"input":"back-stage-power","expect_term_id":"#604015"}
+{"input":"back stage power!","expect_term_id":"#604015"}
+{"input":"back stage power.","expect_term_id":"#604015"}
+{"input":"back  stage  power","expect_term_id":"#604015"}
+{"input":"backline power","expect_term_id":"#604015"}
+{"input":"BACKLINE POWER","expect_term_id":"#604015"}
+{"input":"backline-power","expect_term_id":"#604015"}
+{"input":"backline power!","expect_term_id":"#604015"}
+{"input":"backline power.","expect_term_id":"#604015"}
+{"input":"backline  power","expect_term_id":"#604015"}
+{"input":"backstage power","expect_term_id":"#604015"}
+{"input":"BACKSTAGE POWER","expect_term_id":"#604015"}
+{"input":"backstage-power","expect_term_id":"#604015"}
+{"input":"backstage power!","expect_term_id":"#604015"}
+{"input":"backstage power.","expect_term_id":"#604015"}
+{"input":"backstage  power","expect_term_id":"#604015"}
+{"input":"band call","expect_term_id":"#604016"}
+{"input":"BAND CALL","expect_term_id":"#604016"}
+{"input":"band-call","expect_term_id":"#604016"}
+{"input":"band call!","expect_term_id":"#604016"}
+{"input":"band call.","expect_term_id":"#604016"}
+{"input":"band  call","expect_term_id":"#604016"}
+{"input":"band call time","expect_term_id":"#604016"}
+{"input":"BAND CALL TIME","expect_term_id":"#604016"}
+{"input":"band-call-time","expect_term_id":"#604016"}
+{"input":"band call time!","expect_term_id":"#604016"}
+{"input":"band call time.","expect_term_id":"#604016"}
+{"input":"band  call  time","expect_term_id":"#604016"}
+{"input":"BOH","expect_term_id":"#604017"}
+{"input":"boh","expect_term_id":"#604017"}
+{"input":"B.O.H","expect_term_id":"#604017"}
+{"input":"B.O.H.","expect_term_id":"#604017"}
+{"input":"BOH!","expect_term_id":"#604017"}
+{"input":"BOH.","expect_term_id":"#604017"}
+{"input":"back of house","expect_term_id":"#604017"}
+{"input":"BACK OF HOUSE","expect_term_id":"#604017"}
+{"input":"back-of-house","expect_term_id":"#604017"}
+{"input":"back of house!","expect_term_id":"#604017"}
+{"input":"back of house.","expect_term_id":"#604017"}
+{"input":"back  of  house","expect_term_id":"#604017"}
+{"input":"check out time","expect_term_id":"#60401A"}
+{"input":"CHECK OUT TIME","expect_term_id":"#60401A"}
+{"input":"check-out-time","expect_term_id":"#60401A"}
+{"input":"check out time!","expect_term_id":"#60401A"}
+{"input":"check out time.","expect_term_id":"#60401A"}
+{"input":"check  out  time","expect_term_id":"#60401A"}
+{"input":"hotel checkout","expect_term_id":"#60401A"}
+{"input":"HOTEL CHECKOUT","expect_term_id":"#60401A"}
+{"input":"hotel-checkout","expect_term_id":"#60401A"}
+{"input":"hotel checkout!","expect_term_id":"#60401A"}
+{"input":"hotel checkout.","expect_term_id":"#60401A"}
+{"input":"hotel  checkout","expect_term_id":"#60401A"}
+{"input":"crew call","expect_term_id":"#60401B"}
+{"input":"CREW CALL","expect_term_id":"#60401B"}
+{"input":"crew-call","expect_term_id":"#60401B"}
+{"input":"crew call!","expect_term_id":"#60401B"}
+{"input":"crew call.","expect_term_id":"#60401B"}
+{"input":"crew  call","expect_term_id":"#60401B"}
+{"input":"crew call time","expect_term_id":"#60401B"}
+{"input":"CREW CALL TIME","expect_term_id":"#60401B"}
+{"input":"crew-call-time","expect_term_id":"#60401B"}
+{"input":"crew call time!","expect_term_id":"#60401B"}
+{"input":"crew call time.","expect_term_id":"#60401B"}
+{"input":"crew  call  time","expect_term_id":"#60401B"}
+{"input":"day off","expect_term_id":"#60401D"}
+{"input":"DAY OFF","expect_term_id":"#60401D"}
+{"input":"day-off","expect_term_id":"#60401D"}
+{"input":"day off!","expect_term_id":"#60401D"}
+{"input":"day off.","expect_term_id":"#60401D"}
+{"input":"day  off","expect_term_id":"#60401D"}
+{"input":"doors open","expect_term_id":"#60401E"}
+{"input":"DOORS OPEN","expect_term_id":"#60401E"}
+{"input":"doors-open","expect_term_id":"#60401E"}
+{"input":"doors open!","expect_term_id":"#60401E"}
+{"input":"doors open.","expect_term_id":"#60401E"}
+{"input":"doors  open","expect_term_id":"#60401E"}
+{"input":"doors open time","expect_term_id":"#60401E"}
+{"input":"DOORS OPEN TIME","expect_term_id":"#60401E"}
+{"input":"doors-open-time","expect_term_id":"#60401E"}
+{"input":"doors open time!","expect_term_id":"#60401E"}
+{"input":"doors open time.","expect_term_id":"#60401E"}
+{"input":"doors  open  time","expect_term_id":"#60401E"}
+{"input":"dressing rooms","expect_term_id":"#60401F"}
+{"input":"DRESSING ROOMS","expect_term_id":"#60401F"}
+{"input":"dressing-rooms","expect_term_id":"#60401F"}
+{"input":"dressing rooms!","expect_term_id":"#60401F"}
+{"input":"dressing rooms.","expect_term_id":"#60401F"}
+{"input":"dressing  rooms","expect_term_id":"#60401F"}
+{"input":"dressing room","expect_term_id":"#60401F"}
+{"input":"DRESSING ROOM","expect_term_id":"#60401F"}
+{"input":"dressing-room","expect_term_id":"#60401F"}
+{"input":"dressing room!","expect_term_id":"#60401F"}
+{"input":"dressing room.","expect_term_id":"#60401F"}
+{"input":"dressing  room","expect_term_id":"#60401F"}
+{"input":"drum tech","expect_term_id":"#604020"}
+{"input":"DRUM TECH","expect_term_id":"#604020"}
+{"input":"drum-tech","expect_term_id":"#604020"}
+{"input":"drum tech!","expect_term_id":"#604020"}
+{"input":"drum tech.","expect_term_id":"#604020"}
+{"input":"drum  tech","expect_term_id":"#604020"}
+{"input":"drum technician","expect_term_id":"#604020"}
+{"input":"DRUM TECHNICIAN","expect_term_id":"#604020"}
+{"input":"drum-technician","expect_term_id":"#604020"}
+{"input":"drum technician!","expect_term_id":"#604020"}
+{"input":"drum technician.","expect_term_id":"#604020"}
+{"input":"drum  technician","expect_term_id":"#604020"}
+{"input":"flight number","expect_term_id":"#604021"}
+{"input":"FLIGHT NUMBER","expect_term_id":"#604021"}
+{"input":"flight-number","expect_term_id":"#604021"}
+{"input":"flight number!","expect_term_id":"#604021"}
+{"input":"flight number.","expect_term_id":"#604021"}
+{"input":"flight  number","expect_term_id":"#604021"}
+{"input":"flight no","expect_term_id":"#604021"}
+{"input":"FLIGHT NO","expect_term_id":"#604021"}
+{"input":"flight-no","expect_term_id":"#604021"}
+{"input":"flight no!","expect_term_id":"#604021"}
+{"input":"flight no.","expect_term_id":"#604021"}
+{"input":"flight  no","expect_term_id":"#604021"}
+{"input":"foh tech","expect_term_id":"#604024"}
+{"input":"FOH TECH","expect_term_id":"#604024"}
+{"input":"foh-tech","expect_term_id":"#604024"}
+{"input":"foh tech!","expect_term_id":"#604024"}
+{"input":"foh tech.","expect_term_id":"#604024"}
+{"input":"foh  tech","expect_term_id":"#604024"}
+{"input":"foh technician","expect_term_id":"#604024"}
+{"input":"FOH TECHNICIAN","expect_term_id":"#604024"}
+{"input":"foh-technician","expect_term_id":"#604024"}
+{"input":"foh technician!","expect_term_id":"#604024"}
+{"input":"foh technician.","expect_term_id":"#604024"}
+{"input":"foh  technician","expect_term_id":"#604024"}
+{"input":"sound engineer","expect_term_id":"#604024"}
+{"input":"SOUND ENGINEER","expect_term_id":"#604024"}
+{"input":"sound-engineer","expect_term_id":"#604024"}
+{"input":"sound engineer!","expect_term_id":"#604024"}
+{"input":"sound engineer.","expect_term_id":"#604024"}
+{"input":"sound  engineer","expect_term_id":"#604024"}
+{"input":"group check in","expect_term_id":"#604025"}
+{"input":"GROUP CHECK IN","expect_term_id":"#604025"}
+{"input":"group-check-in","expect_term_id":"#604025"}
+{"input":"group check in!","expect_term_id":"#604025"}
+{"input":"group check in.","expect_term_id":"#604025"}
+{"input":"group  check  in","expect_term_id":"#604025"}
+{"input":"guest list","expect_term_id":"#604026"}
+{"input":"GUEST LIST","expect_term_id":"#604026"}
+{"input":"guest-list","expect_term_id":"#604026"}
+{"input":"guest list!","expect_term_id":"#604026"}
+{"input":"guest list.","expect_term_id":"#604026"}
+{"input":"guest  list","expect_term_id":"#604026"}
+{"input":"guestlist","expect_term_id":"#604026"}
+{"input":"GUESTLIST","expect_term_id":"#604026"}
+{"input":"guestlist!","expect_term_id":"#604026"}
+{"input":"guestlist.","expect_term_id":"#604026"}
+{"input":"guitar tech","expect_term_id":"#604027"}
+{"input":"GUITAR TECH","expect_term_id":"#604027"}
+{"input":"guitar-tech","expect_term_id":"#604027"}
+{"input":"guitar tech!","expect_term_id":"#604027"}
+{"input":"guitar tech.","expect_term_id":"#604027"}
+{"input":"guitar  tech","expect_term_id":"#604027"}
+{"input":"guitar technician","expect_term_id":"#604027"}
+{"input":"GUITAR TECHNICIAN","expect_term_id":"#604027"}
+{"input":"guitar-technician","expect_term_id":"#604027"}
+{"input":"guitar technician!","expect_term_id":"#604027"}
+{"input":"guitar technician.","expect_term_id":"#604027"}
+{"input":"guitar  technician","expect_term_id":"#604027"}
+{"input":"hotel","expect_term_id":"#604028"}
+{"input":"HOTEL","expect_term_id":"#604028"}
+{"input":"hotel!","expect_term_id":"#604028"}
+{"input":"hotel.","expect_term_id":"#604028"}
+{"input":"lodging","expect_term_id":"#604028"}
+{"input":"LODGING","expect_term_id":"#604028"}
+{"input":"lodging!","expect_term_id":"#604028"}
+{"input":"lodging.","expect_term_id":"#604028"}
+{"input":"rooms","expect_term_id":"#604028"}
+{"input":"ROOMS","expect_term_id":"#604028"}
+{"input":"rooms!","expect_term_id":"#604028"}
+{"input":"rooms.","expect_term_id":"#604028"}
+{"input":"laminate","expect_term_id":"#604029"}
+{"input":"LAMINATE","expect_term_id":"#604029"}
+{"input":"laminate!","expect_term_id":"#604029"}
+{"input":"laminate.","expect_term_id":"#604029"}
+{"input":"laminates","expect_term_id":"#604029"}
+{"input":"LAMINATES","expect_term_id":"#604029"}
+{"input":"laminates!","expect_term_id":"#604029"}
+{"input":"laminates.","expect_term_id":"#604029"}
+{"input":"laundry","expect_term_id":"#60402A"}
+{"input":"LAUNDRY","expect_term_id":"#60402A"}
+{"input":"laundry!","expect_term_id":"#60402A"}
+{"input":"laundry.","expect_term_id":"#60402A"}
+{"input":"laundry service","expect_term_id":"#60402A"}
+{"input":"LAUNDRY SERVICE","expect_term_id":"#60402A"}
+{"input":"laundry-service","expect_term_id":"#60402A"}
+{"input":"laundry service!","expect_term_id":"#60402A"}
+{"input":"laundry service.","expect_term_id":"#60402A"}
+{"input":"laundry  service","expect_term_id":"#60402A"}
+{"input":"lighting tech","expect_term_id":"#60402B"}
+{"input":"LIGHTING TECH","expect_term_id":"#60402B"}
+{"input":"lighting-tech","expect_term_id":"#60402B"}
+{"input":"lighting tech!","expect_term_id":"#60402B"}
+{"input":"lighting tech.","expect_term_id":"#60402B"}
+{"input":"lighting  tech","expect_term_id":"#60402B"}
+{"input":"lighting technician","expect_term_id":"#60402B"}
+{"input":"LIGHTING TECHNICIAN","expect_term_id":"#60402B"}
+{"input":"lighting-technician","expect_term_id":"#60402B"}
+{"input":"lighting technician!","expect_term_id":"#60402B"}
+{"input":"lighting technician.","expect_term_id":"#60402B"}
+{"input":"lighting  technician","expect_term_id":"#60402B"}
+{"input":"loading dock","expect_term_id":"#60402E"}
+{"input":"LOADING DOCK","expect_term_id":"#60402E"}
+{"input":"loading-dock","expect_term_id":"#60402E"}
+{"input":"loading dock!","expect_term_id":"#60402E"}
+{"input":"loading dock.","expect_term_id":"#60402E"}
+{"input":"loading  dock","expect_term_id":"#60402E"}
+{"input":"loading dock area","expect_term_id":"#60402E"}
+{"input":"LOADING DOCK AREA","expect_term_id":"#60402E"}
+{"input":"loading-dock-area","expect_term_id":"#60402E"}
+{"input":"loading dock area!","expect_term_id":"#60402E"}
+{"input":"loading dock area.","expect_term_id":"#60402E"}
+{"input":"loading  dock  area","expect_term_id":"#60402E"}
+{"input":"luggage allowance","expect_term_id":"#604030"}
+{"input":"LUGGAGE ALLOWANCE","expect_term_id":"#604030"}
+{"input":"luggage-allowance","expect_term_id":"#604030"}
+{"input":"luggage allowance!","expect_term_id":"#604030"}
+{"input":"luggage allowance.","expect_term_id":"#604030"}
+{"input":"luggage  allowance","expect_term_id":"#604030"}
+{"input":"baggage allowance","expect_term_id":"#604030"}
+{"input":"BAGGAGE ALLOWANCE","expect_term_id":"#604030"}
+{"input":"baggage-allowance","expect_term_id":"#604030"}
+{"input":"baggage allowance!","expect_term_id":"#604030"}
+{"input":"baggage allowance.","expect_term_id":"#604030"}
+{"input":"baggage  allowance","expect_term_id":"#604030"}
+{"input":"merch seller","expect_term_id":"#604031"}
+{"input":"MERCH SELLER","expect_term_id":"#604031"}
+{"input":"merch-seller","expect_term_id":"#604031"}
+{"input":"merch seller!","expect_term_id":"#604031"}
+{"input":"merch seller.","expect_term_id":"#604031"}
+{"input":"merch  seller","expect_term_id":"#604031"}
+{"input":"merch person","expect_term_id":"#604031"}
+{"input":"MERCH PERSON","expect_term_id":"#604031"}
+{"input":"merch-person","expect_term_id":"#604031"}
+{"input":"merch person!","expect_term_id":"#604031"}
+{"input":"merch person.","expect_term_id":"#604031"}
+{"input":"merch  person","expect_term_id":"#604031"}
+{"input":"merch stand","expect_term_id":"#604032"}
+{"input":"MERCH STAND","expect_term_id":"#604032"}
+{"input":"merch-stand","expect_term_id":"#604032"}
+{"input":"merch stand!","expect_term_id":"#604032"}
+{"input":"merch stand.","expect_term_id":"#604032"}
+{"input":"merch  stand","expect_term_id":"#604032"}
+{"input":"merchandise booth","expect_term_id":"#604032"}
+{"input":"MERCHANDISE BOOTH","expect_term_id":"#604032"}
+{"input":"merchandise-booth","expect_term_id":"#604032"}
+{"input":"merchandise booth!","expect_term_id":"#604032"}
+{"input":"merchandise booth.","expect_term_id":"#604032"}
+{"input":"merchandise  booth","expect_term_id":"#604032"}
+{"input":"monitor tech","expect_term_id":"#604033"}
+{"input":"MONITOR TECH","expect_term_id":"#604033"}
+{"input":"monitor-tech","expect_term_id":"#604033"}
+{"input":"monitor tech!","expect_term_id":"#604033"}
+{"input":"monitor tech.","expect_term_id":"#604033"}
+{"input":"monitor  tech","expect_term_id":"#604033"}
+{"input":"monitor technician","expect_term_id":"#604033"}
+{"input":"MONITOR TECHNICIAN","expect_term_id":"#604033"}
+{"input":"monitor-technician","expect_term_id":"#604033"}
+{"input":"monitor technician!","expect_term_id":"#604033"}
+{"input":"monitor technician.","expect_term_id":"#604033"}
+{"input":"monitor  technician","expect_term_id":"#604033"}
+{"input":"onstage power","expect_term_id":"#604035"}
+{"input":"ONSTAGE POWER","expect_term_id":"#604035"}
+{"input":"onstage-power","expect_term_id":"#604035"}
+{"input":"onstage power!","expect_term_id":"#604035"}
+{"input":"onstage power.","expect_term_id":"#604035"}
+{"input":"onstage  power","expect_term_id":"#604035"}
+{"input":"stage power","expect_term_id":"#604035"}
+{"input":"STAGE POWER","expect_term_id":"#604035"}
+{"input":"stage-power","expect_term_id":"#604035"}
+{"input":"stage power!","expect_term_id":"#604035"}
+{"input":"stage power.","expect_term_id":"#604035"}
+{"input":"stage  power","expect_term_id":"#604035"}
+{"input":"oversized item","expect_term_id":"#604036"}
+{"input":"OVERSIZED ITEM","expect_term_id":"#604036"}
+{"input":"oversized-item","expect_term_id":"#604036"}
+{"input":"oversized item!","expect_term_id":"#604036"}
+{"input":"oversized item.","expect_term_id":"#604036"}
+{"input":"oversized  item","expect_term_id":"#604036"}
+{"input":"oversized baggage","expect_term_id":"#604036"}
+{"input":"OVERSIZED BAGGAGE","expect_term_id":"#604036"}
+{"input":"oversized-baggage","expect_term_id":"#604036"}
+{"input":"oversized baggage!","expect_term_id":"#604036"}
+{"input":"oversized baggage.","expect_term_id":"#604036"}
+{"input":"oversized  baggage","expect_term_id":"#604036"}
+{"input":"parking","expect_term_id":"#604037"}
+{"input":"PARKING","expect_term_id":"#604037"}
+{"input":"parking!","expect_term_id":"#604037"}
+{"input":"parking.","expect_term_id":"#604037"}
+{"input":"parking info","expect_term_id":"#604037"}
+{"input":"PARKING INFO","expect_term_id":"#604037"}
+{"input":"parking-info","expect_term_id":"#604037"}
+{"input":"parking info!","expect_term_id":"#604037"}
+{"input":"parking info.","expect_term_id":"#604037"}
+{"input":"parking  info","expect_term_id":"#604037"}
+{"input":"power supplies","expect_term_id":"#604038"}
+{"input":"POWER SUPPLIES","expect_term_id":"#604038"}
+{"input":"power-supplies","expect_term_id":"#604038"}
+{"input":"power supplies!","expect_term_id":"#604038"}
+{"input":"power supplies.","expect_term_id":"#604038"}
+{"input":"power  supplies","expect_term_id":"#604038"}
+{"input":"power supply","expect_term_id":"#604038"}
+{"input":"POWER SUPPLY","expect_term_id":"#604038"}
+{"input":"power-supply","expect_term_id":"#604038"}
+{"input":"power supply!","expect_term_id":"#604038"}
+{"input":"power supply.","expect_term_id":"#604038"}
+{"input":"power  supply","expect_term_id":"#604038"}
+{"input":"press commitments","expect_term_id":"#604039"}
+{"input":"PRESS COMMITMENTS","expect_term_id":"#604039"}
+{"input":"press-commitments","expect_term_id":"#604039"}
+{"input":"press commitments!","expect_term_id":"#604039"}
+{"input":"press commitments.","expect_term_id":"#604039"}
+{"input":"press  commitments","expect_term_id":"#604039"}
+{"input":"press obligations","expect_term_id":"#604039"}
+{"input":"PRESS OBLIGATIONS","expect_term_id":"#604039"}
+{"input":"press-obligations","expect_term_id":"#604039"}
+{"input":"press obligations!","expect_term_id":"#604039"}
+{"input":"press obligations.","expect_term_id":"#604039"}
+{"input":"press  obligations","expect_term_id":"#604039"}
+{"input":"production manager","expect_term_id":"#60403A"}
+{"input":"PRODUCTION MANAGER","expect_term_id":"#60403A"}
+{"input":"production-manager","expect_term_id":"#60403A"}
+{"input":"production manager!","expect_term_id":"#60403A"}
+{"input":"production manager.","expect_term_id":"#60403A"}
+{"input":"production  manager","expect_term_id":"#60403A"}
+{"input":"prod manager","expect_term_id":"#60403A"}
+{"input":"PROD MANAGER","expect_term_id":"#60403A"}
+{"input":"prod-manager","expect_term_id":"#60403A"}
+{"input":"prod manager!","expect_term_id":"#60403A"}
+{"input":"prod manager.","expect_term_id":"#60403A"}
+{"input":"prod  manager","expect_term_id":"#60403A"}
+{"input":"production meeting","expect_term_id":"#60403B"}
+{"input":"PRODUCTION MEETING","expect_term_id":"#60403B"}
+{"input":"production-meeting","expect_term_id":"#60403B"}
+{"input":"production meeting!","expect_term_id":"#60403B"}
+{"input":"production meeting.","expect_term_id":"#60403B"}
+{"input":"production  meeting","expect_term_id":"#60403B"}
+{"input":"prod meeting","expect_term_id":"#60403B"}
+{"input":"PROD MEETING","expect_term_id":"#60403B"}
+{"input":"prod-meeting","expect_term_id":"#60403B"}
+{"input":"prod meeting!","expect_term_id":"#60403B"}
+{"input":"prod meeting.","expect_term_id":"#60403B"}
+{"input":"prod  meeting","expect_term_id":"#60403B"}
+{"input":"production office","expect_term_id":"#60403C"}
+{"input":"PRODUCTION OFFICE","expect_term_id":"#60403C"}
+{"input":"production-office","expect_term_id":"#60403C"}
+{"input":"production office!","expect_term_id":"#60403C"}
+{"input":"production office.","expect_term_id":"#60403C"}
+{"input":"production  office","expect_term_id":"#60403C"}
+{"input":"prod office","expect_term_id":"#60403C"}
+{"input":"PROD OFFICE","expect_term_id":"#60403C"}
+{"input":"prod-office","expect_term_id":"#60403C"}
+{"input":"prod office!","expect_term_id":"#60403C"}
+{"input":"prod office.","expect_term_id":"#60403C"}
+{"input":"prod  office","expect_term_id":"#60403C"}
+{"input":"self check in","expect_term_id":"#60403E"}
+{"input":"SELF CHECK IN","expect_term_id":"#60403E"}
+{"input":"self-check-in","expect_term_id":"#60403E"}
+{"input":"self check in!","expect_term_id":"#60403E"}
+{"input":"self check in.","expect_term_id":"#60403E"}
+{"input":"self  check  in","expect_term_id":"#60403E"}
+{"input":"set length","expect_term_id":"#60403F"}
+{"input":"SET LENGTH","expect_term_id":"#60403F"}
+{"input":"set-length","expect_term_id":"#60403F"}
+{"input":"set length!","expect_term_id":"#60403F"}
+{"input":"set length.","expect_term_id":"#60403F"}
+{"input":"set  length","expect_term_id":"#60403F"}
+{"input":"set duration","expect_term_id":"#60403F"}
+{"input":"SET DURATION","expect_term_id":"#60403F"}
+{"input":"set-duration","expect_term_id":"#60403F"}
+{"input":"set duration!","expect_term_id":"#60403F"}
+{"input":"set duration.","expect_term_id":"#60403F"}
+{"input":"set  duration","expect_term_id":"#60403F"}
+{"input":"set list","expect_term_id":"#604040"}
+{"input":"SET LIST","expect_term_id":"#604040"}
+{"input":"set-list","expect_term_id":"#604040"}
+{"input":"set list!","expect_term_id":"#604040"}
+{"input":"set list.","expect_term_id":"#604040"}
+{"input":"set  list","expect_term_id":"#604040"}
+{"input":"set times","expect_term_id":"#604041"}
+{"input":"SET TIMES","expect_term_id":"#604041"}
+{"input":"set-times","expect_term_id":"#604041"}
+{"input":"set times!","expect_term_id":"#604041"}
+{"input":"set times.","expect_term_id":"#604041"}
+{"input":"set  times","expect_term_id":"#604041"}
+{"input":"set time","expect_term_id":"#604041"}
+{"input":"SET TIME","expect_term_id":"#604041"}
+{"input":"set-time","expect_term_id":"#604041"}
+{"input":"set time!","expect_term_id":"#604041"}
+{"input":"set time.","expect_term_id":"#604041"}
+{"input":"set  time","expect_term_id":"#604041"}
+{"input":"show day","expect_term_id":"#604042"}
+{"input":"SHOW DAY","expect_term_id":"#604042"}
+{"input":"show-day","expect_term_id":"#604042"}
+{"input":"show day!","expect_term_id":"#604042"}
+{"input":"show day.","expect_term_id":"#604042"}
+{"input":"show  day","expect_term_id":"#604042"}
+{"input":"show day schedule","expect_term_id":"#604042"}
+{"input":"SHOW DAY SCHEDULE","expect_term_id":"#604042"}
+{"input":"show-day-schedule","expect_term_id":"#604042"}
+{"input":"show day schedule!","expect_term_id":"#604042"}
+{"input":"show day schedule.","expect_term_id":"#604042"}
+{"input":"show  day  schedule","expect_term_id":"#604042"}
+{"input":"stage door","expect_term_id":"#604044"}
+{"input":"STAGE DOOR","expect_term_id":"#604044"}
+{"input":"stage-door","expect_term_id":"#604044"}
+{"input":"stage door!","expect_term_id":"#604044"}
+{"input":"stage door.","expect_term_id":"#604044"}
+{"input":"stage  door","expect_term_id":"#604044"}
+{"input":"stage entrance","expect_term_id":"#604044"}
+{"input":"STAGE ENTRANCE","expect_term_id":"#604044"}
+{"input":"stage-entrance","expect_term_id":"#604044"}
+{"input":"stage entrance!","expect_term_id":"#604044"}
+{"input":"stage entrance.","expect_term_id":"#604044"}
+{"input":"stage  entrance","expect_term_id":"#604044"}
+{"input":"stage tech","expect_term_id":"#604045"}
+{"input":"STAGE TECH","expect_term_id":"#604045"}
+{"input":"stage-tech","expect_term_id":"#604045"}
+{"input":"stage tech!","expect_term_id":"#604045"}
+{"input":"stage tech.","expect_term_id":"#604045"}
+{"input":"stage  tech","expect_term_id":"#604045"}
+{"input":"stage technician","expect_term_id":"#604045"}
+{"input":"STAGE TECHNICIAN","expect_term_id":"#604045"}
+{"input":"stage-technician","expect_term_id":"#604045"}
+{"input":"stage technician!","expect_term_id":"#604045"}
+{"input":"stage technician.","expect_term_id":"#604045"}
+{"input":"stage  technician","expect_term_id":"#604045"}
+{"input":"support bands","expect_term_id":"#604046"}
+{"input":"SUPPORT BANDS","expect_term_id":"#604046"}
+{"input":"support-bands","expect_term_id":"#604046"}
+{"input":"support bands!","expect_term_id":"#604046"}
+{"input":"support bands.","expect_term_id":"#604046"}
+{"input":"support  bands","expect_term_id":"#604046"}
+{"input":"support act","expect_term_id":"#604046"}
+{"input":"SUPPORT ACT","expect_term_id":"#604046"}
+{"input":"support-act","expect_term_id":"#604046"}
+{"input":"support act!","expect_term_id":"#604046"}
+{"input":"support act.","expect_term_id":"#604046"}
+{"input":"support  act","expect_term_id":"#604046"}
+{"input":"support band set times","expect_term_id":"#604047"}
+{"input":"SUPPORT BAND SET TIMES","expect_term_id":"#604047"}
+{"input":"support-band-set-times","expect_term_id":"#604047"}
+{"input":"support band set times!","expect_term_id":"#604047"}
+{"input":"support band set times.","expect_term_id":"#604047"}
+{"input":"support  band  set  times","expect_term_id":"#604047"}
+{"input":"support set times","expect_term_id":"#604047"}
+{"input":"SUPPORT SET TIMES","expect_term_id":"#604047"}
+{"input":"support-set-times","expect_term_id":"#604047"}
+{"input":"support set times!","expect_term_id":"#604047"}
+{"input":"support set times.","expect_term_id":"#604047"}
+{"input":"support  set  times","expect_term_id":"#604047"}
+{"input":"travel day","expect_term_id":"#604048"}
+{"input":"TRAVEL DAY","expect_term_id":"#604048"}
+{"input":"travel-day","expect_term_id":"#604048"}
+{"input":"travel day!","expect_term_id":"#604048"}
+{"input":"travel day.","expect_term_id":"#604048"}
+{"input":"travel  day","expect_term_id":"#604048"}
+{"input":"travel day schedule","expect_term_id":"#604048"}
+{"input":"TRAVEL DAY SCHEDULE","expect_term_id":"#604048"}
+{"input":"travel-day-schedule","expect_term_id":"#604048"}
+{"input":"travel day schedule!","expect_term_id":"#604048"}
+{"input":"travel day schedule.","expect_term_id":"#604048"}
+{"input":"travel  day  schedule","expect_term_id":"#604048"}
+{"input":"travel duration","expect_term_id":"#604049"}
+{"input":"TRAVEL DURATION","expect_term_id":"#604049"}
+{"input":"travel-duration","expect_term_id":"#604049"}
+{"input":"travel duration!","expect_term_id":"#604049"}
+{"input":"travel duration.","expect_term_id":"#604049"}
+{"input":"travel  duration","expect_term_id":"#604049"}
+{"input":"venue contact","expect_term_id":"#60404A"}
+{"input":"VENUE CONTACT","expect_term_id":"#60404A"}
+{"input":"venue-contact","expect_term_id":"#60404A"}
+{"input":"venue contact!","expect_term_id":"#60404A"}
+{"input":"venue contact.","expect_term_id":"#60404A"}
+{"input":"venue  contact","expect_term_id":"#60404A"}
+{"input":"venue manager","expect_term_id":"#60404A"}
+{"input":"VENUE MANAGER","expect_term_id":"#60404A"}
+{"input":"venue-manager","expect_term_id":"#60404A"}
+{"input":"venue manager!","expect_term_id":"#60404A"}
+{"input":"venue manager.","expect_term_id":"#60404A"}
+{"input":"venue  manager","expect_term_id":"#60404A"}
+{"input":"venue location","expect_term_id":"#60404B"}
+{"input":"VENUE LOCATION","expect_term_id":"#60404B"}
+{"input":"venue-location","expect_term_id":"#60404B"}
+{"input":"venue location!","expect_term_id":"#60404B"}
+{"input":"venue location.","expect_term_id":"#60404B"}
+{"input":"venue  location","expect_term_id":"#60404B"}
+{"input":"venue address","expect_term_id":"#60404B"}
+{"input":"VENUE ADDRESS","expect_term_id":"#60404B"}
+{"input":"venue-address","expect_term_id":"#60404B"}
+{"input":"venue address!","expect_term_id":"#60404B"}
+{"input":"venue address.","expect_term_id":"#60404B"}
+{"input":"venue  address","expect_term_id":"#60404B"}
+{"input":"venue name","expect_term_id":"#60404C"}
+{"input":"VENUE NAME","expect_term_id":"#60404C"}
+{"input":"venue-name","expect_term_id":"#60404C"}
+{"input":"venue name!","expect_term_id":"#60404C"}
+{"input":"venue name.","expect_term_id":"#60404C"}
+{"input":"venue  name","expect_term_id":"#60404C"}
+{"input":"venue","expect_term_id":"#60404C"}
+{"input":"VENUE","expect_term_id":"#60404C"}
+{"input":"venue!","expect_term_id":"#60404C"}
+{"input":"venue.","expect_term_id":"#60404C"}
+{"input":"wifi password","expect_term_id":"#60404D"}
+{"input":"WIFI PASSWORD","expect_term_id":"#60404D"}
+{"input":"wifi-password","expect_term_id":"#60404D"}
+{"input":"wifi password!","expect_term_id":"#60404D"}
+{"input":"wifi password.","expect_term_id":"#60404D"}
+{"input":"wifi  password","expect_term_id":"#60404D"}
+{"input":"wifi","expect_term_id":"#60404D"}
+{"input":"WIFI","expect_term_id":"#60404D"}
+{"input":"wifi!","expect_term_id":"#60404D"}
+{"input":"wifi.","expect_term_id":"#60404D"}
+{"input":"random","expect_term_id":null}
+{"input":"guestlisting","expect_term_id":null}
+{"input":"soundchecks","expect_term_id":null}
+{"input":"fohx","expect_term_id":null}
+{"input":"front-of-housekeeping","expect_term_id":null}
+{"input":"loadins","expect_term_id":null}
+{"input":"onstagetimez","expect_term_id":null}
+{"input":"setlistsz","expect_term_id":null}

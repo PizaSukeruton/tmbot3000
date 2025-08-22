@@ -1,4 +1,3 @@
-const aiEngine = require("./tmAiEngine");
 // backend/services/tmMessageProcessor.js
 // Orchestrates message handling: match intent, generate AI response, persist to DB.
 
@@ -10,7 +9,7 @@ class TmMessageProcessor {
   constructor() {
     this.pool = pool;
     this.intentMatcher = tmIntentMatcher;
-    this.aiEngine = aiEngine;
+    this.aiEngine = new TmAiEngine(this.pool);
   }
 
   /**
@@ -68,58 +67,36 @@ class TmMessageProcessor {
    * Save chat message to DB.
    */
   async saveMessage(memberId, content, intent, aiResponse) {
-  const client = await this.pool.connect();
-  try {
-    await client.query('BEGIN');
-    const session = await this.ensureSession(client, memberId);
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const session = await this.ensureSession(client, memberId);
 
-    // insert USER message
-    const userMsgId = await this.generateHexId();
-    await client.query(
-      `INSERT INTO tm_chat_messages (message_id, session_id, sender_type, content, intent, entities)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        userMsgId,
+      const q = `
+        INSERT INTO tm_chat_messages
+          (session_id, member_id, message_text, intent_json, ai_response_json, created_at)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      `;
+      await client.query(q, [
         session.session_id,
-        'user',
+        memberId,
         content,
-        intent?.intent_type || null,
-        JSON.stringify(intent?.entities || {})
-      ]
-    );
+        JSON.stringify(intent),
+        JSON.stringify(aiResponse),
+      ]);
 
-    // insert BOT message
-    const botMsgId = await this.generateHexId();
-    await client.query(
-      `INSERT INTO tm_chat_messages (message_id, session_id, sender_type, content, intent, entities)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        botMsgId,
-        session.session_id,
-        'bot',
-        (aiResponse && aiResponse.text) ? aiResponse.text : '',
-        intent?.intent_type || null,
-        JSON.stringify(intent?.entities || {})
-      ]
-    );
-
-    // bump session last_activity
-    await client.query(
-      `UPDATE tm_chat_sessions SET last_activity = CURRENT_TIMESTAMP WHERE session_id = $1`,
-      [session.session_id]
-    );
-    await client.query('COMMIT');
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   /**
    * Ensure a session row exists, otherwise create one.
    */
-  }
   async ensureSession(client, memberId) {
     try {
       const existing = await client.query(
@@ -162,8 +139,8 @@ class TmMessageProcessor {
       .toString(16)
       .padStart(6, "0")
       .toUpperCase();
-    return "#"+hex;
-  
+    return hex;
+  }_${hex}`;
   }
 }
 

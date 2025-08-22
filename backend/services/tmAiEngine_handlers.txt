@@ -1,0 +1,103 @@
+
+  async handleProductionNotes(intent, member) {
+    const tpl = this.responseTemplates.get('production_notes');
+    try {
+      const { show_id, venue_id } = intent.entities || {};
+      
+      if (!show_id && !venue_id) {
+        return this.generateClarification('production_notes', 'venue or show');
+      }
+
+      const notes = await this.dataSource.getProductionNotes(show_id || venue_id);
+      
+      if (!notes || notes.length === 0) {
+        return { content: tpl.notFound, metadata: { intent: 'production_notes' } };
+      }
+
+      const venueName = intent.entities.venue_name || 'the venue';
+      let details = '';
+      
+      for (const note of notes) {
+        details += `**${note.category || 'General'}**: ${note.note}\n`;
+        if (note.priority) details += `Priority: ${note.priority}\n`;
+        details += '\n';
+      }
+
+      const content = tpl.found
+        .replace('{venue_name}', venueName)
+        .replace('{details}', details.trim());
+
+      return { content, metadata: { intent: 'production_notes' } };
+    } catch (err) {
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'production_notes' } };
+    }
+  }
+
+  async handleMerchSales(intent, member) {
+    const tpl = this.responseTemplates.get('merch_sales');
+    try {
+      const { show_id, date } = intent.entities || {};
+      
+      if (!show_id && !date) {
+        return this.generateClarification('merch_sales', 'show or date');
+      }
+
+      const sales = await this.dataSource.getMerchSales(show_id);
+      
+      if (!sales) {
+        return { content: tpl.notFound, metadata: { intent: 'merch_sales' } };
+      }
+
+      const showName = `${sales.venue_name || 'Show'} (${sales.date})`;
+      let details = `Total Sales: $${sales.total_sales || 0}\n\n`;
+      details += `**Item Breakdown:**\n`;
+      details += `T-Shirts: ${sales.tshirts_sold || 0} units\n`;
+      details += `Hoodies: ${sales.hoodies_sold || 0} units\n`;
+      details += `Posters: ${sales.posters_sold || 0} units\n`;
+      details += `Other: ${sales.other_items_sold || 0} units\n`;
+
+      const content = tpl.found
+        .replace('{show_name}', showName)
+        .replace('{details}', details);
+
+      return { content, metadata: { intent: 'merch_sales' } };
+    } catch (err) {
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'merch_sales' } };
+    }
+  }
+
+  async handleFlightInfo(intent, member) {
+    const tpl = this.responseTemplates.get('flight_info');
+    try {
+      const { city, date } = intent.entities || {};
+      
+      if (!city && !date) {
+        return this.generateClarification('flight_info', 'destination city or date');
+      }
+
+      const flights = await this.dataSource.getFlightsByDestination(city);
+      
+      if (!flights || flights.length === 0) {
+        const content = tpl.notFound.replace('{destination}', city || 'that destination');
+        return { content, metadata: { intent: 'flight_info' } };
+      }
+
+      let details = '';
+      for (const flight of flights) {
+        details += `**${flight.airline} ${flight.flight_number}**\n`;
+        details += `From: ${flight.origin}\n`;
+        details += `To: ${flight.destination}\n`;
+        details += `Departure: ${this.formatTime(flight.departure_time, member)}\n`;
+        details += `Arrival: ${this.formatTime(flight.arrival_time, member)}\n`;
+        if (flight.confirmation) details += `Confirmation: ${flight.confirmation}\n`;
+        details += '\n';
+      }
+
+      const content = tpl.found.replace('{details}', details.trim());
+
+      return { content, metadata: { intent: 'flight_info' } };
+    } catch (err) {
+      return { content: tpl.error, metadata: { error: String(err?.message || err), intent: 'flight_info' } };
+    }
+  }
+

@@ -1,0 +1,11 @@
+show_id,date,venue_id,venue_name,city,state,country,doors_time,show_time,soundcheck_time,load_in_time,ticket_status,timezone
+#605001,2025-08-20,#606001,The Forum,Melbourne,VIC,Australia,19:00,20:00,15:30,12:00,On Sale,Australia/Melbourne
+#605002,2025-08-22,#606002,Sydney Opera House,Sydney,NSW,Australia,18:30,19:30,15:00,11:00,Low,Australia/Sydney
+#605003,2025-08-25,#606003,Brisbane Entertainment Centre,Brisbane,QLD,Australia,19:00,20:00,16:00,12:30,Sold Out,Australia/Brisbane
+#605004,2025-08-27,#606004,Adelaide Entertainment Centre,Adelaide,SA,Australia,19:00,20:00,15:30,12:00,On Sale,Australia/Adelaide
+#605005,2025-08-29,#606005,Perth Arena,Perth,WA,Australia,19:00,20:00,15:00,11:30,On Sale,Australia/Perth
+#605006,2025-09-01,#606006,Rod Laver Arena,Melbourne,VIC,Australia,18:00,19:00,14:30,10:00,Low,Australia/Melbourne
+#605007,2025-09-03,#606007,Qudos Bank Arena,Sydney,NSW,Australia,19:30,20:30,16:00,12:00,Sold Out,Australia/Sydney
+#605008,2025-09-05,#606008,Vector Arena,Auckland,,New Zealand,19:00,20:00,15:30,11:00,On Sale,Pacific/Auckland
+#605009,2025-09-07,#606009,TSB Arena,Wellington,,New Zealand,19:00,20:00,15:00,11:00,On Sale,Pacific/Auckland
+#605010,2025-09-10,#606010,Singapore Indoor Stadium,Singapore,,Singapore,20:00,21:00,16:00,12:00,Low,Asia/Singapore

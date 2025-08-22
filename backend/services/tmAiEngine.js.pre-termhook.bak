@@ -1,13 +1,3 @@
-const { Pool } = require("pg");
-const __pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const db = { query: (text, params) => __pool.query(text, params) };
-
-async function resolveAnswer(term_id, locale="en-AU"){
-  const sql = "SELECT answer_template FROM tm_answers WHERE term_id = $1 AND locale = $2 AND is_current = true ORDER BY version DESC LIMIT 1";
-  const r = await db.query(sql, [term_id, locale]);
-  return (r.rows && r.rows[0] && r.rows[0].answer_template) ? r.rows[0].answer_template : null;
-}
-
 // backend/services/tmAiEngine.js
 class TmAiEngine {
   constructor(pool) {
@@ -44,13 +34,6 @@ class TmAiEngine {
             text: `Fetching show schedule... (for: ${member || 'guest'})`,
           };
 
-        case 'term_lookup': {
-          const termId = intent.term_id;
-          const locale = process.env.LOCALE || 'en-AU';
-          const answer = await resolveAnswer(termId, locale);
-          return { type: 'answer', text: answer || 'No answer found for this term.' };
-        }
-
         default:
           return {
             type: 'unknown',
@@ -68,4 +51,5 @@ class TmAiEngine {
   }
 }
 
-module.exports = new TmAiEngine();
+module.exports = TmAiEngine;
+
