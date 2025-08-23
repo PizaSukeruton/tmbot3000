@@ -14,16 +14,13 @@ class TmAiEngine {
     this.pool = pool;
   }
 
-  /**
-   * Generate a response for a user message.
-   * @param {object} params
-   * @param {string} params.message - User input
-   * @param {object} params.intent - Parsed intent
-   * @param {object} params.context - Conversation context
-   * @param {string} params.member - Member id/name
-   */
   async generateResponse({ message, intent, context, member }) {
     try {
+      const memberStr =
+        typeof member === 'string'
+          ? member
+          : (member && (member.memberId || member.member_id || member.id || member.identifier)) || 'guest';
+
       if (!intent || !intent.intent_type) {
         return {
           type: 'fallback',
@@ -41,11 +38,11 @@ class TmAiEngine {
         case 'show_schedule':
           return {
             type: 'schedule',
-            text: `Fetching show schedule... (for: ${member || 'guest'})`,
+            text: `Fetching show schedule... (for: ${memberStr})`,
           };
 
         case 'term_lookup': {
-          const termId = intent.term_id;
+          const termId = intent.term_id || (intent.entities && intent.entities.term_id);
           const locale = process.env.LOCALE || 'en-AU';
           const answer = await resolveAnswer(termId, locale);
           return { type: 'answer', text: answer || 'No answer found for this term.' };
