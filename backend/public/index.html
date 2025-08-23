@@ -1,4 +1,3 @@
-<!-- backend/public/index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,146 +5,113 @@
   <title>TmBot3000 – Demo Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { color-scheme: light dark; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    header { padding: 12px 16px; border-bottom: 1px solid #ccc4; }
-    main { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
-    #toolbar { display: flex; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #ccc4; align-items: center; }
-    #toolbar input { padding: 6px 8px; border: 1px solid #ccc6; border-radius: 6px; min-width: 10ch; }
-    #chat { padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-    .msg { padding: 10px 12px; border-radius: 10px; max-width: 70ch; }
-    .user { align-self: flex-end; background: #2563eb22; border: 1px solid #2563eb55; }
-    .bot  { align-self: flex-start; background: #10b98122; border: 1px solid #10b98155; }
-    .meta { font-size: 12px; opacity: 0.7; margin-top: 4px; }
-    #composer { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 16px; border-top: 1px solid #ccc4; }
-    #composer input[type="text"] { padding: 10px; border: 1px solid #ccc6; border-radius: 8px; }
-    #sendBtn { padding: 10px 14px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; }
-    #sendBtn:disabled { opacity: 0.6; cursor: not-allowed; }
-    small.hint { opacity: 0.7; }
+    html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0b0b0c;color:#eaeaea}
+    .wrap{max-width:860px;margin:0 auto;padding:18px}
+    h1{font-size:18px;margin:8px 0 16px;color:#fff}
+    form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    input,button{font-size:14px;border-radius:8px;border:1px solid #333;background:#151517;color:#eaeaea;padding:10px}
+    input{flex:1;min-width:180px}
+    .row{display:flex;gap:8px}
+    .id{width:160px}
+    .log{border:1px solid #222;background:#0f1012;border-radius:10px;padding:12px;max-height:60vh;overflow:auto}
+    .msg{background:#121316;border:1px solid #222;border-radius:10px;padding:10px;margin:8px 0}
+    .sys{opacity:.8}
+    .card{border:1px solid #2a2a2a;background:#131416;border-radius:12px;padding:12px;margin:8px 0}
+    .title{font-weight:600;margin-bottom:6px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:12px;white-space:pre-wrap}
+    .chip{display:inline-block;border:1px solid #343434;background:#17181b;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px;opacity:.9}
   </style>
 </head>
 <body>
-  <main>
-    <header>
-      <strong>TmBot3000</strong> <small class="hint">– demo chat</small>
-    </header>
+  <div class="wrap">
+    <h1>TmBot3000 — Demo Chat <span id="status" class="chip">ready</span></h1>
+    <form id="chatForm">
+      <div class="row" style="width:100%">
+        <input id="memberId" class="id" placeholder="#700001" value="#700001" />
+        <input id="content" placeholder="Type a message (e.g., 'what is FOH', 'next show')" />
+        <button id="sendBtn" type="submit">Send</button>
+      </div>
+    </form>
 
-    <div id="toolbar">
-      <label>Member ID:
-        <input id="memberId" placeholder="#700001" />
-      </label>
-      <label>Session ID:
-        <input id="sessionId" placeholder="(auto)" />
-      </label>
-      <span id="status">🔴 Disconnected</span>
-    </div>
-
-    <div id="chat"></div>
-
-    <div id="composer">
-      <input id="messageInput" type="text" placeholder="Ask something… e.g., When is soundcheck at The Forum?" />
-      <button id="sendBtn">Send</button>
-    </div>
-  </main>
+    <div id="log" class="log"></div>
+  </div>
 
   <script>
-    const chatEl = document.getElementById('chat');
+    const form = document.getElementById('chatForm');
     const memberIdEl = document.getElementById('memberId');
-    const sessionIdEl = document.getElementById('sessionId');
-    const inputEl = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const statusEl = document.getElementById('status');
+    const contentEl = document.getElementById('content');
+    const log = document.getElementById('log');
+    const statusChip = document.getElementById('status');
 
-    // Use wss in HTTPS, ws in HTTP
-    const wsUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws';
-    let ws;
+    function addMsg(html, cls='msg'){ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; log.appendChild(d); log.scrollTop=log.scrollHeight; }
 
-    function appendMessage(role, text, meta) {
-      const div = document.createElement('div');
-      div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
-      div.textContent = text;
-      if (meta) {
-        const m = document.createElement('div');
-        m.className = 'meta';
-        m.textContent = meta;
-        div.appendChild(m);
-      }
-      chatEl.appendChild(div);
-      chatEl.scrollTop = chatEl.scrollHeight;
+    function defCard(title, body){
+      return '<div class="card"><div class="title">'+title+'</div><div>'+body+'</div></div>';
     }
 
-    function setStatus(isOpen) {
-      statusEl.textContent = isOpen ? '🟢 Connected' : '🔴 Disconnected';
-      sendBtn.disabled = !isOpen;
+    function scheduleCard(text){
+      // If backend returns a preformatted list, just render it monospace.
+      return '<div class="card"><div class="title">Show Schedule</div><div class="mono">'+text+'</div></div>';
     }
 
-    function connect() {
-      ws = new WebSocket(wsUrl);
-
-      ws.addEventListener('open', () => setStatus(true));
-      ws.addEventListener('close', () => setStatus(false));
-      ws.addEventListener('error', () => setStatus(false));
-
-      ws.addEventListener('message', (evt) => {
-        try {
-          const msg = JSON.parse(evt.data);
-          if (msg.type === 'response') {
-            if (msg.sessionId && !sessionIdEl.value) sessionIdEl.value = msg.sessionId;
-            const meta = msg.intent ? `intent: ${msg.intent}` : '';
-            appendMessage('bot', msg.content || '', meta);
-          } else if (msg.type === 'error') {
-            appendMessage('bot', `⚠️ ${msg.error}`);
-          }
-        } catch {
-          appendMessage('bot', '⚠️ Invalid message from server');
-        }
-      });
-    }
-
-    function sendMessage() {
-      const memberId = memberIdEl.value.trim();
-      const sessionId = sessionIdEl.value.trim() || undefined;
-      const content = inputEl.value.trim();
-      if (!memberId || !content) {
-        alert('Enter memberId and a message first.');
-        return;
-      }
-      const payload = { type: 'message', memberId, content };
-      if (sessionId) payload.sessionId = sessionId;
-
-      appendMessage('user', content);
-      inputEl.value = '';
-
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(payload));
-      } else {
-        // HTTP fallback
-        fetch('/api/chat/message', {
+    async function sendMessage(memberId, content){
+      const payload = { memberId, content };
+      statusChip.textContent = 'sending';
+      try {
+        const res = await fetch('/api/chat/message', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memberId, sessionId, content }),
-        })
-        .then(r => r.json())
-        .then(r => {
-          if (r.ok) {
-            if (r.sessionId && !sessionIdEl.value) sessionIdEl.value = r.sessionId;
-            appendMessage('bot', r.response || '', r.intent ? `intent: ${r.intent}` : '');
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        // Backends might differ: local returns {intent, aiResponse}; prod may return {ok, response, intent...}
+        const intent = data.intent || null;
+        const ai = data.aiResponse || null;
+
+        addMsg('<div class="sys mono">request ' + JSON.stringify(payload) + '</div>','msg sys');
+
+        if (ai && ai.type) {
+          if (ai.type === 'answer') {
+            // If we have an entities.term or known title, show it; else generic
+            const termName = (intent && intent.entities && (intent.entities.term || intent.entities.term_id)) || 'Definition';
+            addMsg(defCard(String(termName), ai.text));
+          } else if (ai.type === 'schedule') {
+            addMsg(scheduleCard(ai.text));
+          } else if (ai.type === 'help') {
+            addMsg(defCard('Help', ai.text));
+          } else if (ai.type === 'fallback' || ai.type === 'unknown') {
+            addMsg(defCard('Hmm…', ai.text));
+          } else if (ai.type === 'error') {
+            addMsg(defCard('Error', ai.text + (ai.error ? ('\\n' + ai.error) : '')));
           } else {
-            appendMessage('bot', `⚠️ ${r.error || 'Error'}`);
+            addMsg(defCard('Response', ai.text || '(no text)'));
           }
-        })
-        .catch(() => appendMessage('bot', '⚠️ Network error'));
+        } else {
+          // Fallback for prod shape that uses "response" string
+          if (typeof data.response === 'string') {
+            addMsg(scheduleCard(data.response));
+          } else {
+            addMsg(defCard('Response', '<span class="mono">'+JSON.stringify(data,null,2)+'</span>'));
+          }
+        }
+      } catch (e) {
+        addMsg(defCard('Network Error', String(e)));
+      } finally {
+        statusChip.textContent = 'ready';
       }
     }
 
-    sendBtn.addEventListener('click', sendMessage);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') sendMessage();
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const memberId = memberIdEl.value || '#700001';
+      const content  = contentEl.value || '';
+      if (!content.trim()) return;
+      addMsg('<div class="mono">You: '+content+'</div>');
+      sendMessage(memberId, content);
+      contentEl.value = '';
+      contentEl.focus();
     });
-
-    // Auto-connect WS
-    connect();
   </script>
 </body>
 </html>
-
