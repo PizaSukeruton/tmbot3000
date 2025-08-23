@@ -42,7 +42,10 @@ app.post('/api/chat/message', async (req, res) => {
 });
 
 // Serve frontend (if built)
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// root → serve test UI
+app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // Start server
 const PORT = process.env.PORT || 3000;
