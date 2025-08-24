@@ -1,0 +1,89 @@
+const path = require("path");
+const { Pool } = require("pg");
+const __pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+const db = { query: (text, params) => __pool.query(text, params) };
+
+const { createCsvDataSource } = require("./csvDataSource");
+const DATA_DIR = process.env.TM_DATA_DIR || path.join(__dirname, "..", "data");
+const dataSource = createCsvDataSource({ dataDir: DATA_DIR });
+
+async function resolveAnswer(term_id, locale="en-AU"){
+  const sql = "SELECT answer_template FROM tm_answers WHERE term_id = $1 AND locale = $2 AND is_current = true ORDER BY version DESC LIMIT 1";
+  const r = await db.query(sql, [term_id, locale]);
+  return (r.rows && r.rows[0] && r.rows[0].answer_template) ? r.rows[0].answer_template : null;
+}
+
+function fmtDate(d) {
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('en-AU', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  } catch { return d; }
+}
+function lineForShow(s, i){
+  const bits = [];
+  bits.push(`${i}. ${fmtDate(s.date)}`);
+  const locParts = [s.venue_name, s.city, s.state || s.region, s.country].filter(Boolean);
+  if (locParts.length) bits.push(`   📍 ${locParts.join(', ')}`);
+  if (s.doors_time) bits.push(`   🚪 Doors: ${s.doors_time}${s.timezone ? ' ' + s.timezone : ''}`);
+  if (s.show_time)  bits.push(`   🎫 Show: ${s.show_time}${s.timezone ? ' ' + s.timezone : ''}`);
+  if (s.ticket_status) bits.push(`   🎟️ ${s.ticket_status}`);
+  return bits.join('\n');
+}
+
+// backend/services/tmAiEngine.js
+class TmAiEngine {
+  constructor(pool) { this.pool = pool; }
+
+  async generateResponse({ message, intent, context, member }) {
+    try {
+      const memberStr = typeof member === 'string'
+        ? member
+        : (member && (member.memberId || member.member_id || member.id || member.identifier)) || 'guest';
+
+      if (!intent || !intent.intent_type) {
+        return { type: 'fallback', text: "I'm not sure how to handle that yet." };
+      }
+
+      switch (intent.intent_type) {
+        case 'help':
+          return { type: 'help', text: 'You can ask me about shows, schedules, venues, or general tour details.' };
+
+        case 'show_schedule': {
+          // Pull from CSV provider
+          const { shows = [] } = await dataSource.getShows({});
+          const today = new Date();
+          const upcoming = shows
+            .filter(s => s && s.date && new Date(s.date) >= today)
+            .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+          if (!upcoming.length) {
+            return { type: 'schedule', text: `No upcoming shows found (for: ${memberStr})` };
+          }
+
+          // If user asked for "next show", only show the first upcoming
+          const wantNext = /\bnext\s+show\b/i.test(message || "");
+          const list = wantNext ? upcoming.slice(0,1) : upcoming.slice(0,10);
+
+          const lines = list.map((s, idx) => lineForShow(s, idx + 1));
+          const header = `I found ${list.length} ${list.length === 1 ? 'show' : 'shows'}:\n\n`;
+          return { type: 'schedule', text: header + lines.join('\n') };
+        }
+
+        case 'term_lookup': {
+          const termId = intent.term_id || (intent.entities && intent.entities.term_id);
+          const locale = process.env.LOCALE || 'en-AU';
+          const answer = await resolveAnswer(termId, locale);
+          return { type: 'answer', text: answer || 'No answer found for this term.' };
+        }
+
+        default:
+          return { type: 'unknown', text: `I don’t have a handler for intent: ${intent.intent_type}` };
+      }
+    } catch (err) {
+      console.error('[AiEngine] Error in generateResponse:', err);
+      return { type: 'error', text: 'Sorry, something went wrong while generating a response.', error: String(err?.message || err) };
+    }
+  }
+}
+
+module.exports = new TmAiEngine();
