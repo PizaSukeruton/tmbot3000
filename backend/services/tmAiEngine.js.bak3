@@ -1,0 +1,71 @@
+const { Pool } = require("pg");
+const __pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+const db = { query: (text, params) => __pool.query(text, params) };
+
+async function resolveAnswer(term_id, locale="en-AU"){
+  const sql = "SELECT answer_template FROM tm_answers WHERE term_id = $1 AND locale = $2 AND is_current = true ORDER BY version DESC LIMIT 1";
+  const r = await db.query(sql, [term_id, locale]);
+  return (r.rows && r.rows[0] && r.rows[0].answer_template) ? r.rows[0].answer_template : null;
+}
+
+// backend/services/tmAiEngine.js
+class TmAiEngine {
+  constructor(pool) {
+    this.pool = pool;
+  }
+
+  /**
+   * Generate a response for a user message.
+   * @param {object} params
+   * @param {string} params.message - User input
+   * @param {object} params.intent - Parsed intent
+   * @param {object} params.context - Conversation context
+   * @param {string} params.member - Member id/name
+   */
+  async generateResponse({ message, intent, context, member }) {
+    try {
+      if (!intent || !intent.intent_type) {
+        return {
+          type: 'fallback',
+          text: "I'm not sure how to handle that yet.",
+        };
+      }
+
+      switch (intent.intent_type) {
+        case 'help':
+          return {
+            type: 'help',
+            text: 'You can ask me about shows, schedules, venues, or general tour details.',
+          };
+
+        case 'show_schedule':
+          return {
+            type: 'schedule',
+            text: `Fetching show schedule... (for: ${typeof member === 'string' ? member : member?.memberId || 'guest'})`,
+          };
+
+        case 'term_lookup': {
+          const termId = intent.term_id || (intent.entities && intent.entities.term_id);
+          const locale = process.env.LOCALE || 'en-AU';
+          const answer = await resolveAnswer(termId, locale);
+          return { type: 'answer', text: answer || 'No answer found for this term.' };
+        }
+
+        default:
+          return {
+            type: 'unknown',
+            text: `I don’t have a handler for intent: ${intent.intent_type}`,
+          };
+      }
+    } catch (err) {
+      console.error('[AiEngine] Error in generateResponse:', err);
+      return {
+        type: 'error',
+        text: 'Sorry, something went wrong while generating a response.',
+        error: String(err?.message || err),
+      };
+    }
+  }
+}
+
+module.exports = new TmAiEngine();

@@ -124,8 +124,7 @@
     }
 
     function renderResponse(aiResponse){
-      let type = aiResponse && aiResponse.type ? aiResponse.type : 'answer';
-      if (type === "fallback") type = "error";
+      const type = aiResponse && aiResponse.type ? aiResponse.type : 'answer';
       const text = aiResponse && aiResponse.text ? aiResponse.text : '';
 
       switch(type){

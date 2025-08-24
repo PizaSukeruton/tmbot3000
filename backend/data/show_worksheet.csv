@@ -1,0 +1,11 @@
+show_date,city,venue_name,doors_time,show_time,status,venue_contact,contact_email,contact_phone,venue_address,venue_state,venue_country
+2025-08-20,Melbourne,The Forum,19:00,20:00,On Sale,John Smith,john@forummelbourne.com.au,+61 3 9299 9801,,,
+2025-08-22,Sydney,Sydney Opera House,18:30,19:30,Low,Sarah Johnson,sarah@sydneyoperahouse.com,+61 2 9250 7200,,,
+2025-08-25,Brisbane,Brisbane Entertainment Centre,19:00,20:00,Sold Out,Loading dock at rear,Mike Chen,mike@brisent.com.au,,,
+2025-08-27,Adelaide,Adelaide Entertainment Centre,19:00,20:00,On Sale,,,,,,
+2025-08-29,Perth,Perth Arena,19:00,20:00,On Sale,,,,,,
+2025-09-01,Melbourne,Rod Laver Arena,18:00,19:00,Low,,,,,,
+2025-09-03,Sydney,Qudos Bank Arena,19:30,20:30,Sold Out,,,,,,
+2025-09-05,Auckland,Vector Arena,19:00,20:00,On Sale,,,,,,
+2025-09-07,Wellington,TSB Arena,19:00,20:00,On Sale,,,,,,
+2025-09-10,Singapore,Singapore Indoor Stadium,20:00,21:00,Low,,,,,,

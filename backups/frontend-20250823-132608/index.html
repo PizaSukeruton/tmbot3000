@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TmBot3000 – Demo Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0b0b0c;color:#eaeaea}
+    .wrap{max-width:860px;margin:0 auto;padding:18px}
+    h1{font-size:18px;margin:8px 0 16px;color:#fff}
+    form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    input,button{font-size:14px;border-radius:8px;border:1px solid #333;background:#151517;color:#eaeaea;padding:10px}
+    input{flex:1;min-width:180px}
+    .row{display:flex;gap:8px}
+    .id{width:160px}
+    .log{border:1px solid #222;background:#0f1012;border-radius:10px;padding:12px;max-height:60vh;overflow:auto}
+    .msg{background:#121316;border:1px solid #222;border-radius:10px;padding:10px;margin:8px 0}
+    .sys{opacity:.8}
+    .card{border:1px solid #2a2a2a;background:#131416;border-radius:12px;padding:12px;margin:8px 0}
+    .title{font-weight:600;margin-bottom:6px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:12px;white-space:pre-wrap}
+    .chip{display:inline-block;border:1px solid #343434;background:#17181b;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px;opacity:.9}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>TmBot3000 — Demo Chat <span id="status" class="chip">ready</span></h1>
+    <form id="chatForm">
+      <div class="row" style="width:100%">
+        <input id="memberId" class="id" placeholder="#700001" value="#700001" />
+        <input id="content" placeholder="Type a message (e.g., 'what is FOH', 'next show')" />
+        <button id="sendBtn" type="submit">Send</button>
+      </div>
+    </form>
+
+    <div id="log" class="log"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('chatForm');
+    const memberIdEl = document.getElementById('memberId');
+    const contentEl = document.getElementById('content');
+    const log = document.getElementById('log');
+    const statusChip = document.getElementById('status');
+
+    function addMsg(html, cls='msg'){ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; log.appendChild(d); log.scrollTop=log.scrollHeight; }
+
+    function defCard(title, body){
+      return '<div class="card"><div class="title">'+title+'</div><div>'+body+'</div></div>';
+    }
+
+    function scheduleCard(text){
+      // If backend returns a preformatted list, just render it monospace.
+      return '<div class="card"><div class="title">Show Schedule</div><div class="mono">'+text+'</div></div>';
+    }
+
+    async function sendMessage(memberId, content){
+      const payload = { memberId, content };
+      statusChip.textContent = 'sending';
+      try {
+        const res = await fetch('/api/chat/message', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        // Backends might differ: local returns {intent, aiResponse}; prod may return {ok, response, intent...}
+        const intent = data.intent || null;
+        const ai = data.aiResponse || null;
+
+        addMsg('<div class="sys mono">request ' + JSON.stringify(payload) + '</div>','msg sys');
+
+        if (ai && ai.type) {
+          if (ai.type === 'answer') {
+            // If we have an entities.term or known title, show it; else generic
+            const termName = (intent && intent.entities && (intent.entities.term || intent.entities.term_id)) || 'Definition';
+            addMsg(defCard(String(termName), ai.text));
+} else if (ai.type === 'schedule') {
+  const scheduleText = (typeof data.response === 'string' && data.response.trim())
+    ? data.response
+    : (ai.text || "");
+  addMsg(scheduleCard(scheduleText));
+}          } else if (ai.type === 'help') {
+            addMsg(defCard('Help', ai.text));
+          } else if (ai.type === 'fallback' || ai.type === 'unknown') {
+            addMsg(defCard('Hmm…', ai.text));
+          } else if (ai.type === 'error') {
+            addMsg(defCard('Error', ai.text + (ai.error ? ('\\n' + ai.error) : '')));
+          } else {
+            addMsg(defCard('Response', ai.text || '(no text)'));
+          }
+        } else {
+          // Fallback for prod shape that uses "response" string
+          if (typeof data.response === 'string') {
+            addMsg(scheduleCard(data.response));
+          } else {
+            addMsg(defCard('Response', '<span class="mono">'+JSON.stringify(data,null,2)+'</span>'));
+          }
+        }
+      } catch (e) {
+        addMsg(defCard('Network Error', String(e)));
+      } finally {
+        statusChip.textContent = 'ready';
+      }
+    }
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const memberId = memberIdEl.value || '#700001';
+      const content  = contentEl.value || '';
+      if (!content.trim()) return;
+      addMsg('<div class="mono">You: '+content+'</div>');
+      sendMessage(memberId, content);
+      contentEl.value = '';
+      contentEl.focus();
+    });
+  </script>
+</body>
+</html>

@@ -49,23 +49,20 @@ class TmAiEngine {
           return { type: 'help', text: 'You can ask me about shows, schedules, venues, or general tour details.' };
 
         case 'show_schedule': {
-          // Pull from CSV provider
+          // Pull from CSV provider; choose top 10 upcoming
           const { shows = [] } = await dataSource.getShows({});
           const today = new Date();
           const upcoming = shows
             .filter(s => s && s.date && new Date(s.date) >= today)
-            .sort((a,b) => new Date(a.date) - new Date(b.date));
+            .sort((a,b) => new Date(a.date) - new Date(b.date))
+            .slice(0, 10);
 
           if (!upcoming.length) {
             return { type: 'schedule', text: `No upcoming shows found (for: ${memberStr})` };
           }
 
-          // If user asked for "next show", only show the first upcoming
-          const wantNext = /\bnext\s+show\b/i.test(message || "");
-          const list = wantNext ? upcoming.slice(0,1) : upcoming.slice(0,10);
-
-          const lines = list.map((s, idx) => lineForShow(s, idx + 1));
-          const header = `I found ${list.length} ${list.length === 1 ? 'show' : 'shows'}:\n\n`;
+          const lines = upcoming.map((s, idx) => lineForShow(s, idx + 1));
+          const header = `I found ${upcoming.length} ${upcoming.length === 1 ? 'show' : 'shows'}:\n\n`;
           return { type: 'schedule', text: header + lines.join('\n') };
         }
 
