@@ -38,10 +38,10 @@ function lineForShow(s, i) {
   const bits = [];
   bits.push(`${i}. ${fmtDate(s.date)}`);
   const locParts = [s.venue_name, s.city, s.state || s.region, s.country].filter(Boolean);
-  if (locParts.length) bits.push(`   📍 ${locParts.join(", ")}`);
-  if (s.doors_time) bits.push(`   🚪 Doors: ${s.doors_time}${s.timezone ? " " + s.timezone : ""}`);
-  if (s.show_time)  bits.push(`   🎫 Show: ${s.show_time}${s.timezone ? " " + s.timezone : ""}`);
-  if (s.ticket_status) bits.push(`   🎟️ ${s.ticket_status}`);
+  if (locParts.length) bits.push(`    📍 ${locParts.join(", ")}`);
+  if (s.doors_time) bits.push(`    🚪 Doors: ${s.doors_time}${s.timezone ? " " + s.timezone : ""}`);
+  if (s.show_time)  bits.push(`    🎫 Show: ${s.show_time}${s.timezone ? " " + s.timezone : ""}`);
+  if (s.ticket_status) bits.push(`    🎟️ ${s.ticket_status}`);
   return bits.join("\n");
 }
 
@@ -89,40 +89,43 @@ class TmAiEngine {
           return { type: "answer", text: answer || "No answer found for this term." };
         }
 
-        // Flights / travel
+        // --- Refactored Flights / travel handler with 'to' and 'from' logic ---
         case "travel": {
           try {
-            const text = formatUpcomingFlights(10, { userTz: "Australia/Sydney" });
+            const opts = { userTz: "Australia/Sydney" };
+            let limit = 10;
+
+            const normalizedMessage = (message || "").toLowerCase();
+            if (/\bnext\b/.test(normalizedMessage)) {
+              opts.nextOnly = true;
+              limit = 1;
+            } else if (/\btoday\b/.test(normalizedMessage)) {
+              opts.todayOnly = true;
+              limit = 50;
+            } else if (intent && intent.to_city) { // Added specific check for 'to_city'
+              opts.toCity = intent.to_city;
+              limit = 50;
+            } else if (intent && intent.from_city) { // Added specific check for 'from_city'
+              opts.fromCity = intent.from_city;
+              limit = 50;
+            } else if (intent && intent.city) {
+              opts.city = intent.city;
+              limit = 50;
+            }
+
+            const text = formatUpcomingFlights(limit, opts);
             return { type: "schedule", text };
           } catch (e) {
+            console.error("[TmAiEngine] Error in travel handler:", e);
             return { type: "error", text: "Flights lookup failed: " + e.message };
           }
         }
-        case "travel_next": {
-          try {
-            const text = formatUpcomingFlights(10, { nextOnly: true, userTz: "Australia/Sydney" });
-            return { type: "schedule", text };
-          } catch (e) {
-            return { type: "error", text: "Flights lookup failed: " + e.message };
-          }
-        }
-        case "travel_today": {
-          try {
-            const text = formatUpcomingFlights(50, { todayOnly: true, userTz: "Australia/Sydney" });
-            return { type: "schedule", text };
-          } catch (e) {
-            return { type: "error", text: "Flights lookup failed: " + e.message };
-          }
-        }
-        case "travel_city": {
-          try {
-            const city = (intent && intent.city) ? intent.city : null;
-            const text = formatUpcomingFlights(50, { city, userTz: "Australia/Sydney" });
-            return { type: "schedule", text };
-          } catch (e) {
-            return { type: "error", text: "Flights lookup failed: " + e.message };
-          }
-        }
+        
+        // These are no longer needed, but can remain as fallback
+        case "travel_next":
+        case "travel_today":
+        case "travel_city":
+            return { type: "unknown", text: "This intent is no longer supported by the latest code. Please update the intent handler." };
 
         default:
           return { type: "unknown", text: `I don’t have a handler for intent: ${intent.intent_type}` };
@@ -136,7 +139,7 @@ class TmAiEngine {
 
 module.exports = new TmAiEngine();
 
-// -------- flights formatter (timezone-aware) --------
+// -------- Updated flights formatter (timezone-aware) --------
 function formatUpcomingFlights(limit = 10, opts = {}) {
   const fs = require("fs");
   const path = require("path");
@@ -156,7 +159,7 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
     flight_number: idx("flight_number"),
     departure_city: idx("departure_city"),
     arrival_city: idx("arrival_city"),
-    departure_time: idx("departure_time"),   // e.g. 2025-08-21T09:00:00 (local to departure_timezone)
+    departure_time: idx("departure_time"),
     arrival_time: idx("arrival_time"),
     departure_timezone: idx("departure_timezone"),
     arrival_timezone: idx("arrival_timezone"),
@@ -188,7 +191,6 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
     confirmation: a[I.confirmation],
   })).filter(r => r.departure_time);
 
-  // Convert local naive ISO + IANA tz to UTC epoch (ms) without external deps.
   function getOffsetMinutesAt(utcMs, tz) {
     const d = new Date(utcMs);
     const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -205,7 +207,7 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
     const base = Date.UTC(Y, M - 1, D, h, m, s);
     let off = getOffsetMinutesAt(base, tz);
     const guess = base - off * 60000;
-    off = getOffsetMinutesAt(guess, tz); // refine once (DST boundaries)
+    off = getOffsetMinutesAt(guess, tz);
     return base - off * 60000;
   }
 
@@ -213,7 +215,15 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
 
   let list = rows.map(r => ({ ...r, depEpoch: zonedLocalToEpochMs(r.departure_time, r.departure_timezone) }));
 
-  if (opts.city) {
+  // Filter based on the new 'to' and 'from' options
+  if (opts.toCity) {
+    const c = String(opts.toCity).toLowerCase();
+    list = list.filter(r => (r.arrival_city || "").toLowerCase() === c);
+  } else if (opts.fromCity) {
+    const c = String(opts.fromCity).toLowerCase();
+    list = list.filter(r => (r.departure_city || "").toLowerCase() === c);
+  } else if (opts.city) {
+    // This is the fallback for a generic city query
     const c = String(opts.city).toLowerCase();
     list = list.filter(r =>
       (r.departure_city || "").toLowerCase() === c ||
@@ -254,10 +264,10 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
   let out = `I found ${list.length} flight${list.length === 1 ? "" : "s"}:\n`;
   list.forEach((r, i) => {
     out += `\n${i + 1}. ${prettyDate(r.depEpoch, r.departure_timezone)}\n`;
-    out += `   ✈️ ${pad(r.airline)} ${pad(r.flight_number)} — ${pad(r.departure_city)} → ${pad(r.arrival_city)}\n`;
-    out += `   🕘 Dep: ${prettyTime(r.depEpoch, r.departure_timezone)} ${pad(r.departure_timezone)}\n`;
-    if (r.arrival_time) out += `   🕒 Arr: ${pad(r.arrival_time.slice(11, 16))} ${pad(r.arrival_timezone)}\n`;
-    if (r.confirmation) out += `   🔖 Conf: ${pad(r.confirmation)}\n`;
+    out += `    ✈️ ${pad(r.airline)} ${pad(r.flight_number)} — ${pad(r.departure_city)} → ${pad(r.arrival_city)}\n`;
+    out += `    🕘 Dep: ${prettyTime(r.depEpoch, r.departure_timezone)} ${pad(r.departure_timezone)}\n`;
+    if (r.arrival_time) out += `    🕒 Arr: ${pad(r.arrival_time.slice(11, 16))} ${pad(r.arrival_timezone)}\n`;
+    if (r.confirmation) out += `    🔖 Conf: ${pad(r.confirmation)}\n`;
   });
   return out;
 }
