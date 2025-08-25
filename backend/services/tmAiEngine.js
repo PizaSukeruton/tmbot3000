@@ -307,7 +307,13 @@ class TmAiEngine {
 
     const q = normalized || "";
 
-    // Try to infer a human term from DB-derived router hints when missing
+    
+if (!intent || !intent.intent_type) {
+  if (/(?:\bwhen\b|\bwhat\s*time\b)/i.test(q) && /(\bdeparture\b|\bcheckout\b|\bairport\s*call\b|\blobby\s*call\b)/i.test(q)) {
+    intent = { intent_type: "term_lookup", confidence: 0.65, entities: {} };
+  }
+}
+// Try to infer a human term from DB-derived router hints when missing
     if (!term && this.routerHints && timeLike && city) {
       for (const h of this.routerHints) {
         if (q.includes(h)) { term = h; break; }
