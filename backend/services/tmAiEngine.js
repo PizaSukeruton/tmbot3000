@@ -245,8 +245,18 @@ class TmAiEngine {
       }
     }
 
-    if (!scored.length) return null;
-
+    if (!scored.length) {
+      const timeLike = (verb === "what time is" || verb === "when is");
+      if (timeLike) {
+        const prefs = ["soundcheck_time","load_in_time","doors_time","show_time"];
+        for (const p of prefs) {
+          if (Object.prototype.hasOwnProperty.call(show, p) && String(show[p] || "").trim() !== "") {
+            return { k: p, score: 1, val: show[p] };
+          }
+        }
+      }
+      return null;
+    }
     // Highest score wins
     scored.sort((a, b) => b.score - a.score);
     return scored[0]; // { k, score, val }
