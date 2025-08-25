@@ -466,7 +466,34 @@ try {
 {
             const q = String(message || "").toLowerCase();
             const termId = (intent && (intent.term_id || (intent.entities && intent.entities.term_id))) || null;
-            const ti = termId && this.timeTermMap ? this.timeTermMap[String(termId).toLowerCase()] : null;
+            
+    // Hard intercept for time-terms
+    try {
+      const ttHit = intent && intent.entities && intent.entities.term_id ? await __resolveByTermId(intent.entities.term_id) : null;
+      if (ttHit) {
+        const cityParse = this.parseCityAndTerm(String(message || ""));
+        const city = cityParse && cityParse.city;
+        if (!city) {
+          return { type: 'fallback', text: __friendlyMissingCity() };
+        }
+        const show = await this.getNextShowByCity(city);
+        if (show && show[ttHit.field_key]) {
+          const lbl = (ttHit.label || __prettifyLabelFromField(ttHit.field_key));
+          return {
+            type: 'schedule',
+            text: __renderScheduleLine({
+              label: lbl,
+              city,
+              venue: show.venue_name || 'TBA',
+              date: show.date || 'TBA',
+              value: show[ttHit.field_key],
+              tz: show.timezone || '',
+            }),
+          };
+        }
+      }
+    } catch (e) { /* swallow and fall through to glossary */ }
+const ti = termId && this.timeTermMap ? this.timeTermMap[String(termId).toLowerCase()] : null;
             if (ti && this.parseCityAndTerm && this.getNextShowByCity) {
               const parsed = this.parseCityAndTerm(q);
               const city = parsed && parsed.city;
