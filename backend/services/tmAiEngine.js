@@ -712,7 +712,35 @@ const ti = termId && this.timeTermMap ? this.timeTermMap[String(termId).toLowerC
 
         // Refactored Flights / travel handler (unchanged in behavior)
         case "travel": {
-          try {
+          // [TmBot3000] time-term override inside travel: checkout/departure/airport call/lobby call
+{
+  const qText = String(message || "");
+  const timey = /(?:\bwhen\b|\bwhat\s*time\b)/i.test(qText);
+  const directTerms = [
+    { rx: /\bcheckout\b/i,         field: 'checkout_time',      label: 'Checkout time' },
+    { rx: /\bdeparture\b/i,        field: 'departure_time',     label: 'Departure time' },
+    { rx: /\bairport\s*call\b/i,  field: 'airport_call_time',  label: 'Airport call time' },
+    { rx: /\blobby\s*call\b/i,    field: 'lobby_call_time',    label: 'Lobby call time' }
+  ];
+  const hit = timey ? directTerms.find(t => t.rx.test(qText)) : null;
+  if (hit) {
+    const parsed = this.parseCityAndTerm(qText) || {};
+    const city = parsed.city;
+    if (!city) {
+      return { type: 'fallback', text: 'I can grab the exact time if you tell me the city (e.g., “when are doors in Sydney?”).' };
+    }
+    const show = await this.getNextShowByCity(city);
+    if (show) {
+      const picked = (typeof __pickTimeField === 'function') ? __pickTimeField(show, hit.field) : hit.field;
+      if (picked && show[picked]) {
+        const tz = show.timezone ? (' ' + show.timezone) : '';
+        return { type: 'schedule', text: `${hit.label} for ${city} (${show.venue_name || 'TBA'}) on ${show.date || 'TBA'}: ${show[picked]}${tz}` };
+      }
+    }
+    return { type: 'fallback', text: `I couldn’t find ${hit.label} for ${city} on the next show. If there’s a later date or a different city, try that.` };
+  }
+}
+try {
             const opts = { userTz: "Australia/Sydney" };
             let limit = 10;
             const normalizedMessage = (message || "").toLowerCase();
