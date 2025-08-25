@@ -49,15 +49,15 @@ async function getCitiesFromCsv() {
     const cols = header.split(",");
     const idx = (n) => cols.indexOf(n);
     const I = {
-        departure_city: idx("departure_city"),
-        arrival_city: idx("arrival_city"),
+      departure_city: idx("departure_city"),
+      arrival_city: idx("arrival_city"),
     };
     
     const cities = new Set();
     lines.forEach(line => {
-        const parts = line.split(',');
-        if (parts[I.departure_city]) cities.add(parts[I.departure_city].toLowerCase());
-        if (parts[I.arrival_city]) cities.add(parts[I.arrival_city].toLowerCase());
+      const parts = line.split(',');
+      if (parts[I.departure_city]) cities.add(parts[I.departure_city].toLowerCase());
+      if (parts[I.arrival_city]) cities.add(parts[I.arrival_city].toLowerCase());
     });
     
     return Array.from(cities);
@@ -105,7 +105,17 @@ class TmAiEngine {
     this.pool = pool;
     this.industryTerms = [];
     this.cities = [];
-    
+
+    // Longer/more specific verbs first.
+    this.VERBS = [
+      "tell me about",
+      "what time is",
+      "when is",
+      "where is",
+      "who is",
+      "what is"
+    ];
+
     // Load the terms and cities when the engine is instantiated.
     this.loadTerms(); 
     this.loadCities();
@@ -123,6 +133,231 @@ class TmAiEngine {
     console.log(`Loaded ${this.cities.length} unique cities from the travel data.`);
   }
 
+  // --- Parser helpers ---
+
+  normalizeMessage(message = "") {
+    // Lowercase + strip punctuation; keep spaces/word chars.
+    return String(message)
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  /**
+   * parseMessage -> { verb: string|null, entities: string[] }
+   * Entities come from dynamic sources: this.industryTerms + this.cities
+   */
+  parseMessage(message = "") {
+    const out = { verb: null, entities: [] };
+    const normalized = this.normalizeMessage(message);
+    if (!normalized) return out;
+
+    // 1) verb
+    for (const v of this.VERBS) {
+      if (normalized.startsWith(v)) {
+        out.verb = v;
+        break;
+      }
+    }
+
+    // 2) entities (scan across both lists)
+    const candidates = [
+      ...(this.industryTerms || []),
+      ...(this.cities || [])
+    ].filter(Boolean);
+
+    // Keep order of first appearance; avoid dupes.
+    for (const c of candidates) {
+      if (normalized.includes(c) && !out.entities.includes(c)) {
+        out.entities.push(c);
+      }
+    }
+
+    // Heuristic: add common domain tokens as router hints (does not hardcode answers)
+    const extraHints = ['flight', 'flights', 'show'];
+    for (const hint of extraHints) {
+      if (normalized.includes(hint) && !out.entities.includes(hint)) {
+        out.entities.push(hint);
+      }
+    }
+
+    return out;
+  }
+
+  /** Return the first show matching a city (case-insensitive). */
+  async getShowByCity(city) {
+    if (!city) return null;
+    const { shows = [] } = await dataSource.getShows({});
+    const c = String(city).toLowerCase();
+    return shows.find(s => (s.city || "").toLowerCase() === c) || null;
+  }
+
+  /**
+   * Try to find the most relevant field in a show object for a given term, without hard-coding.
+   * Strategy:
+   *  - Normalize term and keys (letters+digits only).
+   *  - Prefer keys that end with "_time" or contain "time".
+   *  - If verb is location-like, prefer venue/location fields.
+   */
+  findFieldForTerm({ show, term, verb }) {
+    if (!show || !term) return null;
+
+    const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nTerm = norm(term);
+
+    const keys = Object.keys(show || {});
+    const scored = [];
+
+    for (const k of keys) {
+      const nk = norm(k);
+
+      // Basic relevance: does key mention the term?
+      const mentions = nk.includes(nTerm);
+
+      // Heuristics for different verb families
+      const isTimeKey = /time$|time\b/.test(k) || nk.endsWith('time') || nk.includes('time');
+      const isVenueKey = ['venue', 'venue_name', 'address', 'location'].some(v => nk.includes(norm(v)));
+      const isCityKey  = nk === 'city' || nk.endsWith('city');
+      const isStateKey = nk === 'state' || nk === 'region';
+      const isCountryKey = nk === 'country';
+
+      let score = 0;
+      if (mentions) score += 5;
+      if (isTimeKey) score += 3;
+
+      // If the user asked "where is ...", prefer venue/location-ish keys.
+      const locationLike = (verb === 'where is');
+      if (locationLike && (isVenueKey || isCityKey || isStateKey || isCountryKey)) {
+        score += 4;
+      }
+
+      // If time-like verb, bump time-keys.
+      const timeLike = (verb === 'what time is' || verb === 'when is');
+      if (timeLike && isTimeKey) score += 4;
+
+      // Keep only keys with non-empty values
+      const val = show[k];
+      if (val != null && String(val).trim() !== '' && score > 0) {
+        scored.push({ k, score, val });
+      }
+    }
+
+    if (!scored.length) return null;
+
+    // Highest score wins
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0]; // { k, score, val }
+  }
+
+  /**
+   * retrieveData(parsed) -> structured object for the generator
+   * Returns one of:
+   *  - { responseType: "contextualTerm",     payload: { term, city, field, value } }
+   *  - { responseType: "contextualLocation", payload: { term, city, field, value, place } }
+   *  - { responseType: "genericTerm",        payload: { term, definition } }
+   *  - { responseType: "travelSchedule",     payload: { text } }
+   *  - null
+   */
+  async retrieveData(parsed) {
+    const { verb, entities = [] } = parsed || {};
+    if (!entities.length) return null;
+
+    // Classify entities using your dynamic lists
+    let term = null;
+    let city = null;
+    for (const e of entities) {
+      if (!term && this.industryTerms?.includes(e)) term = e;
+      if (!city && this.cities?.includes(e)) city = e;
+    }
+
+    // Bridge: flight-style queries into travel handler
+    const termLooksLikeFlight = term === 'flight' || term === 'flights';
+    const timeLike = (verb === 'what time is' || verb === 'when is');
+
+    if (termLooksLikeFlight || (!term && city && timeLike)) {
+      // Reuse your travel schedule generator with toCity preference if city present.
+      const text = formatUpcomingFlights(10, city ? { toCity: city, userTz: "Australia/Sydney" } : { userTz: "Australia/Sydney" });
+      return { responseType: 'travelSchedule', payload: { text } };
+    }
+
+    // Contextual show lookup for any term with a city
+    if (city && term) {
+      const show = await this.getShowByCity(city);
+      if (show) {
+        const hit = this.findFieldForTerm({ show, term, verb });
+        if (hit) {
+          if (verb === 'where is') {
+            const locParts = [show.venue_name, show.city, show.state || show.region, show.country].filter(Boolean);
+            const place = locParts.join(', ');
+            return { responseType: 'contextualLocation', payload: { term, city, field: hit.k, value: hit.val, place } };
+          }
+          return { responseType: 'contextualTerm', payload: { term, city, field: hit.k, value: hit.val } };
+        }
+        // No field matched in the show: fall back to definition
+        const definition = await resolveAnswer(term);
+        if (definition) {
+          return { responseType: 'genericTerm', payload: { term, definition } };
+        }
+        return null;
+      }
+      // No show found for that city: fall back to definition
+      const definition = await resolveAnswer(term);
+      if (definition) {
+        return { responseType: 'genericTerm', payload: { term, definition } };
+      }
+      return null;
+    }
+
+    // Generic definition (term only, no city)
+    if (term) {
+      const definition = await resolveAnswer(term);
+      if (definition) {
+        return { responseType: 'genericTerm', payload: { term, definition } };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * generateResponseText(retrieved) -> string
+   */
+  generateResponseText(retrieved) {
+    const FALLBACKS = [
+      "Sorry, I don’t have that info yet. Try another term?",
+      "Hmm, I can’t find that. Want to ask about show times or venues?",
+      "I don’t have that, but I can help with schedules, venues, or merch."
+    ];
+    if (!retrieved) return FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
+
+    const { responseType, payload = {} } = retrieved;
+
+    if (responseType === "travelSchedule") {
+      return payload.text || FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
+    }
+
+    if (responseType === "contextualLocation") {
+      const { term, city, place } = payload;
+      return `The ${term} for the show in ${city} is at ${place}.`;
+    }
+
+    if (responseType === "contextualTerm") {
+      const { term, city, field, value } = payload;
+      // Add "at " when the field looks time-like for readability
+      const prefix = String(field).toLowerCase().includes('time') ? 'at ' : '';
+      return `The ${term} for the show in ${city} is ${prefix}${value}.`;
+    }
+
+    if (responseType === "genericTerm") {
+      const { term, definition } = payload;
+      return `The official definition for ${term} is: ${definition}`;
+    }
+
+    return FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
+  }
+
+  // -------- Main dispatcher --------
   async generateResponse({ message, intent, context, member }) {
     try {
       const memberStr = typeof member === "string"
@@ -156,26 +391,38 @@ class TmAiEngine {
           return { type: "schedule", text: header + lines.join("\n") };
         }
 
-        // Updated Term Lookup Handler to dynamically check the message for terms
+        // Term Lookup now routed through parse -> retrieve -> generate pipeline
         case "term_lookup": {
           const locale = process.env.LOCALE || "en-AU";
-          let termId = intent.term_id || (intent.entities && intent.entities.term_id);
 
-          // If the NLU system doesn't provide a term_id, we look for one in the message.
-          if (!termId && message) {
-            const normalizedMessage = message.toLowerCase();
-            // We use .find() to get the first match in our list of terms.
-            const foundTerm = this.industryTerms.find(term => normalizedMessage.includes(term));
-            if (foundTerm) {
-              termId = foundTerm;
+          // 1) Parse message into { verb, entities }
+          const parsed = this.parseMessage(message);
+
+          // 2) Retrieve data based on parsed structure
+          let retrieved = await this.retrieveData(parsed);
+
+          // 3) If nothing came back, try legacy quick-match term_id as a safety net
+          if (!retrieved) {
+            let termId = intent.term_id || (intent.entities && intent.entities.term_id);
+            if (!termId && message) {
+              const normalizedMessage = (message || "").toLowerCase();
+              const foundTerm = this.industryTerms.find(term => normalizedMessage.includes(term));
+              if (foundTerm) termId = foundTerm;
+            }
+            if (termId) {
+              const definition = await resolveAnswer(termId, locale);
+              if (definition) {
+                retrieved = { responseType: "genericTerm", payload: { term: termId, definition } };
+              }
             }
           }
 
-          const answer = await resolveAnswer(termId, locale);
-          return { type: "answer", text: answer || "No answer found for this term." };
+          // 4) Generate user-facing text from retrieved data (or friendly fallback)
+          const text = this.generateResponseText(retrieved);
+          return { type: "answer", text };
         }
 
-        // Refactored Flights / travel handler with improved keyword logic
+        // Refactored Flights / travel handler (unchanged in behavior)
         case "travel": {
           try {
             const opts = { userTz: "Australia/Sydney" };
