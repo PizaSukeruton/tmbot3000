@@ -491,10 +491,8 @@ try {
 
         const show = await this.getNextShowByCity(city);
 
-        {
-    const __picked = __pickTimeField(show, ttHit.field_key);
-    if (__picked) {
-          const lbl = ttHit.label || (String(ttHit.field_key).replace(/_/g,' ').replace(/\b\w/g, m => m.toUpperCase()));
+        const __picked = __pickTimeField(show, ttHit.field_key);
+        if (__picked) {const lbl = ttHit.label || (String(ttHit.field_key).replace(/_/g,' ').replace(/\b\w/g, m => m.toUpperCase()));
           const tz  = show.timezone ? ` ${show.timezone}` : '';
           return {
             type: 'schedule',
@@ -520,10 +518,8 @@ try {
           return { type: 'fallback', text: __friendlyMissingCity() };
         }
         const show = await this.getNextShowByCity(city);
-        {
-    const __picked = __pickTimeField(show, ttHit.field_key);
-    if (__picked) {
-          const lbl = (ttHit.label || __prettifyLabelFromField(ttHit.field_key));
+        const __picked = __pickTimeField(show, ttHit.field_key);
+        if (__picked) {const lbl = (ttHit.label || __prettifyLabelFromField(ttHit.field_key));
           return {
             type: 'schedule',
             text: __renderScheduleLine({
