@@ -449,21 +449,7 @@ class TmAiEngine {
         // Term Lookup now routed through parse -> retrieve -> generate pipeline
         
 case "term_lookup": {
-          // [TmBot3000::TimeTerms] First, try time-term routing (DB fast-path + NL fallback)
-try {
-  const tt = await __handleTimeTermRouting({
-    text: message,
-    intent,
-    parseCityAndTerm: this.parseCityAndTerm.bind(this),
-    getNextShowByCity: this.getNextShowByCity.bind(this)
-  });
-  if (tt) return tt;
-} catch (e) {
-  console.warn("[TimeTerms] routing error:", e?.message);
-}
-
-// (fall through to glossary)
-{
+          {
             const q = String(message || "").toLowerCase();
             const termId = (intent && (intent.term_id || (intent.entities && intent.entities.term_id))) || null;
             
