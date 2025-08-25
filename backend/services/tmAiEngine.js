@@ -602,7 +602,9 @@ class TmAiEngine {
 }
 
 // The export statement is correct, creating and exporting one instance of the engine.
-module.exports = new TmAiEngine();
+const engine = new TmAiEngine();
+setImmediate(() => engine.loadTimeTermsFromDb && engine.loadTimeTermsFromDb());
+module.exports = engine;
 
 // -------- Updated flights formatter (timezone-aware) --------
 function formatUpcomingFlights(limit = 10, opts = {}) {
