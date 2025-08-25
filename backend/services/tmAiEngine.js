@@ -413,6 +413,10 @@ class TmAiEngine {
   // -------- Main dispatcher --------
   async generateResponse({ message, intent, context, member }) {
     try {
+      const _q_norm = String(message || "").toLowerCase();
+      const _timey = /(what\s+time|doors?\b|sound\s*-?check|load[\s-]?in|load[\s-]?out|on\s*[-\s]*stage|curfew|set\s*time|show\s*time|band\s*call|crew\s*call|lobby\s*call|airport\s*call|check[-\s]*out\s*time)/.test(_q_norm);
+      if (!intent) intent = {};
+      if (!intent.intent_type && _timey) intent.intent_type = "term_lookup";
       const memberStr = typeof member === "string" ? member : (member && (member.memberId || member.member_id || member.id || member.identifier)) || "guest";
 
       if (!intent || !intent.intent_type) {
