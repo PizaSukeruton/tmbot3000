@@ -308,6 +308,44 @@ class TmAiEngine {
     const q = normalized || "";
 
     
+
+try {
+  if (/(?:\bwhen\b|\bwhat\s*time\b)/i.test(q)) {
+    const directTerms = [
+      { rx: /\bcheckout\b/i,         field: 'checkout_time'      },
+      { rx: /\bdeparture\b/i,        field: 'departure_time'     },
+      { rx: /\bairport\s*call\b/i,  field: 'airport_call_time'  },
+      { rx: /\blobby\s*call\b/i,    field: 'lobby_call_time'    }
+    ];
+    const hit = directTerms.find(t => t.rx.test(q));
+    if (hit) {
+      const parsed = this.parseCityAndTerm(String(message||"")) || {};
+      const city = parsed.city;
+      if (!city) { return { type: 'fallback', text: 'I can grab the exact time if you tell me the city (e.g., “when are doors in Sydney?”).' }; }
+      if (!this.timeTermMap || typeof this.timeTermMap !== 'object') {
+        if (typeof this.loadTimeTermsFromDb === 'function') { try { await this.loadTimeTermsFromDb(); } catch(_){} }
+        this.timeTermMap = this.timeTermMap || {};
+      }
+      const show = await this.getNextShowByCity(city);
+      if (show) {
+        const __picked = (typeof __pickTimeField === 'function') ? __pickTimeField(show, hit.field) : hit.field;
+        if (__picked && show[__picked]) {
+          let label = null;
+          const map = this.timeTermMap || {};
+          for (const k in map) {
+            const v = map[k] || {};
+            const fk = v.field_key || v.field;
+            if (fk === hit.field) { label = v.label; break; }
+          }
+          label = label || (String(hit.field).replace(/_/g,' ').replace(/\b\w/g,m=>m.toUpperCase()));
+          const tz = show.timezone ? (' ' + show.timezone) : '';
+          return { type: 'schedule', text: `${label} for ${city} (${show.venue_name || 'TBA'}) on ${show.date || 'TBA'}: ${show[__picked]}${tz}` };
+        }
+      }
+      return { type: 'fallback', text: `I couldn’t find ${hit.field.replace(/_/g,' ')} for ${city} on the next show. If there’s a later date or a different city, try that.` };
+    }
+  }
+} catch(_) { }
 if (!intent || !intent.intent_type) {
   if (/(?:\bwhen\b|\bwhat\s*time\b)/i.test(q) && /(\bdeparture\b|\bcheckout\b|\bairport\s*call\b|\blobby\s*call\b)/i.test(q)) {
     intent = { intent_type: "term_lookup", confidence: 0.65, entities: {} };
@@ -496,7 +534,39 @@ case "term_lookup": {
           return { type: 'fallback', text: `I couldn’t find ${lbl} for ${city} on the next show. If there’s a later date or a different city, try that.` };
         }
       }
-      // If not a time-term or no hit, fall through to glossary path
+      
+// NL direct map for common time terms when no term_id was produced
+try {
+  if (!ttHit) {
+    const directTerms = [
+      { rx: /\bdeparture\b/i,        field: 'departure_time',     label: 'Departure time' },
+      { rx: /\bcheckout\b/i,         field: 'checkout_time',      label: 'Checkout time'  },
+      { rx: /\bairport\s*call\b/i,  field: 'airport_call_time',  label: 'Airport call time' },
+      { rx: /\blobby\s*call\b/i,    field: 'lobby_call_time',    label: 'Lobby call time' }
+    ];
+    const hit = directTerms.find(t => t.rx.test(q));
+    if (hit) {
+      const parsed = this.parseCityAndTerm(q) || {};
+      const city = parsed.city;
+      if (!city) {
+        return { type: 'fallback', text: 'I can grab the exact time if you tell me the city (e.g., “when are doors in Sydney?”).' };
+      }
+      const show = await this.getNextShowByCity(city);
+      if (show) {
+        const __picked = __pickTimeField(show, hit.field);
+        if (__picked) {
+          const tz = show.timezone ? (' ' + show.timezone) : '';
+          return {
+            type: 'schedule',
+            text: `${hit.label} for ${city} (${show.venue_name || 'TBA'}) on ${show.date || 'TBA'}: ${show[__picked]}${tz}`
+          };
+        }
+      }
+      return { type: 'fallback', text: `I couldn’t find ${hit.label} for ${city} on the next show. If there’s a later date or a different city, try that.` };
+    }
+  }
+} catch(_) { /* fall through */ }
+// If not a time-term or no hit, fall through to glossary path
     } catch (e) {
       // On error, fall through to glossary path
       console.warn('[TimeTerms] priority block error:', e && e.message);
