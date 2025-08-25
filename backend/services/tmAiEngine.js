@@ -413,9 +413,7 @@ class TmAiEngine {
   // -------- Main dispatcher --------
   async generateResponse({ message, intent, context, member }) {
     try {
-      const memberStr = typeof member === "string"
-        ? member
-        : (member && (member.memberId || member.member_id || member.id || member.identifier)) || "guest";
+      const memberStr = typeof member === "string" ? member : (member && (member.memberId || member.member_id || member.id || member.identifier)) || "guest";
 
       if (!intent || !intent.intent_type) {
         return { type: "fallback", text: "I'm not sure how to handle that yet." };
