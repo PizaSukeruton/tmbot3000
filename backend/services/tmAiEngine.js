@@ -119,7 +119,7 @@ class TmAiEngine {
     // Load the terms and cities when the engine is instantiated.
     this.loadTerms(); 
     this.loadCities();
-    this.loadTimeTermsFromDb();
+    if (this.loadTimeTermsFromDb) this.loadTimeTermsFromDb();
   }
 
   // Method to asynchronously load the terms from the database
