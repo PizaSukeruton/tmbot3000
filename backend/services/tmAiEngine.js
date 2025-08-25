@@ -4,16 +4,70 @@ const { Pool } = require("pg");
 // Postgres (answers come from tm_answers)
 const __pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  // SSL is enabled for the live environment
   ssl: { rejectUnauthorized: false }
 });
 const db = { query: (text, params) => __pool.query(text, params) };
 
-// CSV data provider (shows, etc.)
+// The createCsvDataSource is in the same directory as this file.
 const { createCsvDataSource } = require("./csvDataSource");
 const DATA_DIR = process.env.TM_DATA_DIR || path.join(__dirname, "..", "data");
 const dataSource = createCsvDataSource({ dataDir: DATA_DIR });
 
 // -------- helpers --------
+// This function dynamically gets the term IDs from the database.
+async function getTermIds() {
+  const sql = `
+    SELECT DISTINCT term_id
+    FROM tm_answers
+    WHERE is_current = true
+    ORDER BY term_id;
+  `;
+  try {
+    const res = await db.query(sql);
+    // Return an array of lowercase term_ids for case-insensitive matching
+    return res.rows.map(row => row.term_id.toLowerCase());
+  } catch (error) {
+    console.error("Error fetching term IDs:", error.message);
+    return [];
+  }
+}
+
+// NEW: This function dynamically gets all unique city names from the flights CSV data.
+// It reads the file directly to avoid reliance on an external API on the dataSource.
+async function getCitiesFromCsv() {
+  try {
+    const fs = require("fs");
+    const file = path.resolve(DATA_DIR, "travel_flights.csv");
+    if (!fs.existsSync(file)) return [];
+    
+    const txt = fs.readFileSync(file, "utf8");
+    const lines = txt.split(/\r?\n/).filter(Boolean);
+    if (lines.length <= 1) return [];
+    
+    const header = lines.shift();
+    const cols = header.split(",");
+    const idx = (n) => cols.indexOf(n);
+    const I = {
+        departure_city: idx("departure_city"),
+        arrival_city: idx("arrival_city"),
+    };
+    
+    const cities = new Set();
+    lines.forEach(line => {
+        const parts = line.split(',');
+        if (parts[I.departure_city]) cities.add(parts[I.departure_city].toLowerCase());
+        if (parts[I.arrival_city]) cities.add(parts[I.arrival_city].toLowerCase());
+    });
+    
+    return Array.from(cities);
+  } catch (error) {
+    console.error("Error fetching city data from CSV:", error.message);
+    return [];
+  }
+}
+
+// This function resolves an answer for a specific term ID.
 async function resolveAnswer(term_id, locale = "en-AU") {
   const sql = `
     SELECT answer_template
@@ -45,12 +99,29 @@ function lineForShow(s, i) {
   return bits.join("\n");
 }
 
-// A simple list of cities to check against for better accuracy.
-const CITIES = ["adelaide", "perth", "sydney", "auckland", "wellington", "singapore", "brisbane", "melbourne", "dubai"];
-
 // -------- engine --------
 class TmAiEngine {
-  constructor(pool) { this.pool = pool; }
+  constructor(pool) {
+    this.pool = pool;
+    this.industryTerms = [];
+    this.cities = [];
+    
+    // Load the terms and cities when the engine is instantiated.
+    this.loadTerms(); 
+    this.loadCities();
+  }
+
+  // Method to asynchronously load the terms from the database
+  async loadTerms() {
+    this.industryTerms = await getTermIds();
+    console.log(`Loaded ${this.industryTerms.length} industry terms from the database.`);
+  }
+
+  // Method to asynchronously load cities from the CSV data
+  async loadCities() {
+    this.cities = await getCitiesFromCsv();
+    console.log(`Loaded ${this.cities.length} unique cities from the travel data.`);
+  }
 
   async generateResponse({ message, intent, context, member }) {
     try {
@@ -85,28 +156,40 @@ class TmAiEngine {
           return { type: "schedule", text: header + lines.join("\n") };
         }
 
+        // Updated Term Lookup Handler to dynamically check the message for terms
         case "term_lookup": {
-          const termId = intent.term_id || (intent.entities && intent.entities.term_id);
           const locale = process.env.LOCALE || "en-AU";
+          let termId = intent.term_id || (intent.entities && intent.entities.term_id);
+
+          // If the NLU system doesn't provide a term_id, we look for one in the message.
+          if (!termId && message) {
+            const normalizedMessage = message.toLowerCase();
+            // We use .find() to get the first match in our list of terms.
+            const foundTerm = this.industryTerms.find(term => normalizedMessage.includes(term));
+            if (foundTerm) {
+              termId = foundTerm;
+            }
+          }
+
           const answer = await resolveAnswer(termId, locale);
           return { type: "answer", text: answer || "No answer found for this term." };
         }
 
-        // --- Refactored Flights / travel handler with improved keyword logic ---
+        // Refactored Flights / travel handler with improved keyword logic
         case "travel": {
           try {
             const opts = { userTz: "Australia/Sydney" };
             let limit = 10;
             const normalizedMessage = (message || "").toLowerCase();
 
-            // Check for "from" city first
-            const fromCityMatch = CITIES.find(city => normalizedMessage.includes(`from ${city}`));
+            // Check for "from" city first using the dynamically loaded city list
+            const fromCityMatch = this.cities.find(city => normalizedMessage.includes(`from ${city}`));
             if (fromCityMatch) {
               opts.fromCity = fromCityMatch;
               limit = 50;
             } else {
               // Check for "to" city
-              const toCityMatch = CITIES.find(city => normalizedMessage.includes(`to ${city}`));
+              const toCityMatch = this.cities.find(city => normalizedMessage.includes(`to ${city}`));
               if (toCityMatch) {
                 opts.toCity = toCityMatch;
                 limit = 50;
@@ -120,14 +203,13 @@ class TmAiEngine {
                 limit = 50;
               } else {
                 // Final fallback: check for any city name without a prefix
-                const genericCityMatch = CITIES.find(city => normalizedMessage.includes(city));
+                const genericCityMatch = this.cities.find(city => normalizedMessage.includes(city));
                 if (genericCityMatch) {
                   opts.city = genericCityMatch;
                   limit = 50;
                 }
               }
             }
-
             const text = formatUpcomingFlights(limit, opts);
             return { type: "schedule", text };
           } catch (e) {
@@ -135,13 +217,7 @@ class TmAiEngine {
             return { type: "error", text: "Flights lookup failed: " + e.message };
           }
         }
-
-        // These are no longer needed, but can remain as fallback
-        case "travel_next":
-        case "travel_today":
-        case "travel_city":
-            return { type: "unknown", text: "This intent is no longer supported by the latest code. Please update the intent handler." };
-
+        
         default:
           return { type: "unknown", text: `I don’t have a handler for intent: ${intent.intent_type}` };
       }
@@ -152,10 +228,10 @@ class TmAiEngine {
   }
 }
 
+// The export statement is correct, creating and exporting one instance of the engine.
 module.exports = new TmAiEngine();
 
 // -------- Updated flights formatter (timezone-aware) --------
-// This function remains unchanged as its logic was already correct.
 function formatUpcomingFlights(limit = 10, opts = {}) {
   const fs = require("fs");
   const path = require("path");
