@@ -119,6 +119,7 @@ class TmAiEngine {
     // Load the terms and cities when the engine is instantiated.
     this.loadTerms(); 
     this.loadCities();
+    this.loadTimeTermsFromDb();
   }
 
   // Method to asynchronously load the terms from the database
@@ -445,6 +446,28 @@ class TmAiEngine {
 
         // Term Lookup now routed through parse -> retrieve -> generate pipeline
         case "term_lookup": {
+          {
+            const q = String(message || "").toLowerCase();
+            const termId = (intent && (intent.term_id || (intent.entities && intent.entities.term_id))) || null;
+            const ti = termId && this.timeTermMap ? this.timeTermMap[String(termId).toLowerCase()] : null;
+            if (ti && this.parseCityAndTerm && this.getNextShowByCity) {
+              const parsed = this.parseCityAndTerm(q);
+              const city = parsed && parsed.city;
+              if (city) {
+                const show = await this.getNextShowByCity(city);
+                if (show && Object.prototype.hasOwnProperty.call(show, ti.field)) {
+                  const val = show[ti.field];
+                  if (val) {
+                    const when  = String(val);
+                    const vname = show.venue_name || show.venue || "venue";
+                    const date  = show.date || show.show_date || "";
+                    const tz    = show.timezone || show.tz || "";
+                    return { type: "schedule", text: `${ti.label} for ${city} (${vname}) on ${date}: ${when} ${tz}` };
+                  }
+                }
+              }
+            }
+          }
       try {
         const q = String(message || "").toLowerCase();
         const timeLike = /\bwhat\s+time\b|\btime\s+for\b|\bon\s*stage\b|\bsoundcheck\b|\bdoors\b|\bcurfew\b/.test(q);
@@ -819,6 +842,25 @@ if (typeof TmAiEngine !== "undefined" && TmAiEngine.prototype) {
       return best;
     } catch (e) {
       return null;
+    }
+  };
+}
+
+// Load authoritative time terms from DB view tm_time_terms
+if (typeof TmAiEngine !== "undefined" && TmAiEngine.prototype) {
+  TmAiEngine.prototype.loadTimeTermsFromDb = async function() {
+    try {
+      const sql = 'SELECT term_id, field_key, label FROM tm_time_terms';
+      const res = await db.query(sql);
+      this.timeTermMap = Object.fromEntries(
+        (res.rows || [])
+          .filter(r => r.term_id && r.field_key)
+          .map(r => [String(r.term_id).toLowerCase(), { field: r.field_key, label: r.label }])
+      );
+      console.log(`[TmAiEngine] Loaded \${Object.keys(this.timeTermMap||{}).length} time terms from DB.`);
+    } catch (e) {
+      console.error("[TmAiEngine] Error loading time terms:", e && e.message || e);
+      this.timeTermMap = {};
     }
   };
 }
