@@ -45,6 +45,9 @@ function lineForShow(s, i) {
   return bits.join("\n");
 }
 
+// A simple list of cities to check against for better accuracy.
+const CITIES = ["adelaide", "perth", "sydney", "auckland", "wellington", "singapore", "brisbane", "melbourne", "dubai"];
+
 // -------- engine --------
 class TmAiEngine {
   constructor(pool) { this.pool = pool; }
@@ -89,28 +92,40 @@ class TmAiEngine {
           return { type: "answer", text: answer || "No answer found for this term." };
         }
 
-        // --- Refactored Flights / travel handler with 'to' and 'from' logic ---
+        // --- Refactored Flights / travel handler with improved keyword logic ---
         case "travel": {
           try {
             const opts = { userTz: "Australia/Sydney" };
             let limit = 10;
-
             const normalizedMessage = (message || "").toLowerCase();
-            if (/\bnext\b/.test(normalizedMessage)) {
-              opts.nextOnly = true;
-              limit = 1;
-            } else if (/\btoday\b/.test(normalizedMessage)) {
-              opts.todayOnly = true;
+
+            // Check for "from" city first
+            const fromCityMatch = CITIES.find(city => normalizedMessage.includes(`from ${city}`));
+            if (fromCityMatch) {
+              opts.fromCity = fromCityMatch;
               limit = 50;
-            } else if (intent && intent.to_city) { // Added specific check for 'to_city'
-              opts.toCity = intent.to_city;
-              limit = 50;
-            } else if (intent && intent.from_city) { // Added specific check for 'from_city'
-              opts.fromCity = intent.from_city;
-              limit = 50;
-            } else if (intent && intent.city) {
-              opts.city = intent.city;
-              limit = 50;
+            } else {
+              // Check for "to" city
+              const toCityMatch = CITIES.find(city => normalizedMessage.includes(`to ${city}`));
+              if (toCityMatch) {
+                opts.toCity = toCityMatch;
+                limit = 50;
+              } else if (/\bnext\b/.test(normalizedMessage)) {
+                // Check for "next"
+                opts.nextOnly = true;
+                limit = 1;
+              } else if (/\btoday\b/.test(normalizedMessage)) {
+                // Check for "today"
+                opts.todayOnly = true;
+                limit = 50;
+              } else {
+                // Final fallback: check for any city name without a prefix
+                const genericCityMatch = CITIES.find(city => normalizedMessage.includes(city));
+                if (genericCityMatch) {
+                  opts.city = genericCityMatch;
+                  limit = 50;
+                }
+              }
             }
 
             const text = formatUpcomingFlights(limit, opts);
@@ -120,7 +135,7 @@ class TmAiEngine {
             return { type: "error", text: "Flights lookup failed: " + e.message };
           }
         }
-        
+
         // These are no longer needed, but can remain as fallback
         case "travel_next":
         case "travel_today":
@@ -140,6 +155,7 @@ class TmAiEngine {
 module.exports = new TmAiEngine();
 
 // -------- Updated flights formatter (timezone-aware) --------
+// This function remains unchanged as its logic was already correct.
 function formatUpcomingFlights(limit = 10, opts = {}) {
   const fs = require("fs");
   const path = require("path");
@@ -215,7 +231,6 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
 
   let list = rows.map(r => ({ ...r, depEpoch: zonedLocalToEpochMs(r.departure_time, r.departure_timezone) }));
 
-  // Filter based on the new 'to' and 'from' options
   if (opts.toCity) {
     const c = String(opts.toCity).toLowerCase();
     list = list.filter(r => (r.arrival_city || "").toLowerCase() === c);
@@ -223,7 +238,6 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
     const c = String(opts.fromCity).toLowerCase();
     list = list.filter(r => (r.departure_city || "").toLowerCase() === c);
   } else if (opts.city) {
-    // This is the fallback for a generic city query
     const c = String(opts.city).toLowerCase();
     list = list.filter(r =>
       (r.departure_city || "").toLowerCase() === c ||
