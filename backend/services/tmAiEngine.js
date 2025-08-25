@@ -447,7 +447,9 @@ class TmAiEngine {
         }
 
         // Term Lookup now routed through parse -> retrieve -> generate pipeline
-        // [TmBot3000::TimeTerms] First, try time-term routing (DB fast-path + NL fallback)
+        
+case "term_lookup": {
+          // [TmBot3000::TimeTerms] First, try time-term routing (DB fast-path + NL fallback)
 try {
   const tt = await __handleTimeTermRouting({
     text: message,
@@ -461,9 +463,7 @@ try {
 }
 
 // (fall through to glossary)
-
-case "term_lookup": {
-          {
+{
             const q = String(message || "").toLowerCase();
             const termId = (intent && (intent.term_id || (intent.entities && intent.entities.term_id))) || null;
             const ti = termId && this.timeTermMap ? this.timeTermMap[String(termId).toLowerCase()] : null;
