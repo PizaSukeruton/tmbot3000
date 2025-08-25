@@ -129,7 +129,17 @@ function createCsvDataSource({ dataDir }) {
       show_time: s.show_time,
       soundcheck_time: s.soundcheck_time,
       load_in_time: s.load_in_time,
-      ticket_status: s.ticket_status,
+
+      load_out_time: s.load_out_time,
+      curfew_time: s.curfew_time,
+      lobby_call_time: s.lobby_call_time,
+      departure_time: s.departure_time,
+      airport_call_time: s.airport_call_time,
+      band_call_time: s.band_call_time,
+      checkout_time: s.checkout_time,
+      crew_call_time: s.crew_call_time,
+      set_length: s.set_length,
+      set_times: s.set_times,      ticket_status: s.ticket_status,
     };
   }
 
