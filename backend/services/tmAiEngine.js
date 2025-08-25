@@ -486,7 +486,9 @@ class TmAiEngine {
                   const vname = show.venue_name || show.venue || "venue";
                   const date  = show.date || show.show_date || "";
                   const tz    = show.timezone || show.tz || "";
-                  return { type: "schedule", text: `Soundcheck time for ${city} (${vname}) on ${date}: ${when} ${tz}` };
+                  const labelBase = (typeof term === "string" && term.trim()) ? term.trim() : String(field||"").replace(/_time$/," ").replace(/_/g," ").trim();
+                  const label = labelBase.charAt(0).toUpperCase() + labelBase.slice(1) + " time";
+                  return { type: "schedule", text: `${label} for ${city} (${vname}) on ${date}: ${when} ${tz}` };
                 }
               }
             }
@@ -511,7 +513,9 @@ class TmAiEngine {
                   const vname = show.venue_name || show.venue || "venue";
                   const date  = show.date || show.show_date || "";
                   const tz    = show.timezone || show.tz || "";
-                  return { type: "schedule", text: `Soundcheck time for ${city} (${vname}) on ${date}: ${when} ${tz}` };
+                  const labelBase = (typeof term === "string" && term.trim()) ? term.trim() : String(field||"").replace(/_time$/," ").replace(/_/g," ").trim();
+                  const label = labelBase.charAt(0).toUpperCase() + labelBase.slice(1) + " time";
+                  return { type: "schedule", text: `${label} for ${city} (${vname}) on ${date}: ${when} ${tz}` };
                 }
               }
             }
