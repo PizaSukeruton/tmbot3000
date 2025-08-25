@@ -491,12 +491,14 @@ try {
 
         const show = await this.getNextShowByCity(city);
 
-        if (show && show[ttHit.field_key]) {
+        {
+    const __picked = __pickTimeField(show, ttHit.field_key);
+    if (__picked) {
           const lbl = ttHit.label || (String(ttHit.field_key).replace(/_/g,' ').replace(/\b\w/g, m => m.toUpperCase()));
           const tz  = show.timezone ? ` ${show.timezone}` : '';
           return {
             type: 'schedule',
-            text: `${lbl} for ${city} (${show.venue_name || 'TBA'}) on ${show.date || 'TBA'}: ${show[ttHit.field_key]}${tz}`
+            text: `${lbl} for ${city} (${show.venue_name || 'TBA'}) on ${show.date || 'TBA'}: ${show[__picked]}${tz}`
           };
         } else {
           const lbl = ttHit.label || 'that time';
@@ -518,7 +520,9 @@ try {
           return { type: 'fallback', text: __friendlyMissingCity() };
         }
         const show = await this.getNextShowByCity(city);
-        if (show && show[ttHit.field_key]) {
+        {
+    const __picked = __pickTimeField(show, ttHit.field_key);
+    if (__picked) {
           const lbl = (ttHit.label || __prettifyLabelFromField(ttHit.field_key));
           return {
             type: 'schedule',
@@ -527,7 +531,7 @@ try {
               city,
               venue: show.venue_name || 'TBA',
               date: show.date || 'TBA',
-              value: show[ttHit.field_key],
+              value: show[__picked],
               tz: show.timezone || '',
             }),
           };
@@ -966,3 +970,17 @@ if (typeof TmAiEngine !== "undefined" && TmAiEngine.prototype) {
   };
 }
 
+
+
+function __pickTimeField(show, key) {
+  if (!show || !key) return null;
+  const keys = new Set(Object.keys(show));
+  const cand = [];
+  cand.push(key);                          // load_in_time
+  cand.push(key.replace(/_time$/, ''));    // load_in
+  cand.push(key.replace(/_/g, ''));        // loadintime
+  cand.push(key.replace(/_time$/, '_at')); // load_in_at
+  cand.push(key.replace('load_in','loadin')); // loadin_time
+  for (const k of cand) if (keys.has(k)) return k;
+  return null;
+}
