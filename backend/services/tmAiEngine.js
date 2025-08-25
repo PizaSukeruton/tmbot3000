@@ -467,7 +467,48 @@ try {
             const q = String(message || "").toLowerCase();
             const termId = (intent && (intent.term_id || (intent.entities && intent.entities.term_id))) || null;
             
-    // Hard intercept for time-terms
+    
+    // [TmBot3000::TimeTerms] PRIORITY: schedule time lookup (race-safe) → return immediately on success
+    try {
+      // Ensure DB map is ready
+      if (!this.timeTermMap || (typeof this.timeTermMap !== 'object')) {
+        if (typeof this.loadTimeTermsFromDb === 'function') {
+          await this.loadTimeTermsFromDb();
+        }
+        if (!this.timeTermMap || (typeof this.timeTermMap !== 'object')) this.timeTermMap = {};
+      }
+
+      // Resolve time-term from authoritative map
+      const ttHit = termId ? this.timeTermMap[termId] : null;
+
+      if (ttHit) {
+        const parsed = this.parseCityAndTerm(q);
+        const city = parsed && parsed.city;
+
+        if (!city) {
+          return { type: 'fallback', text: 'I can grab the exact time if you tell me the city (e.g., “when are doors in Sydney?”).' };
+        }
+
+        const show = await this.getNextShowByCity(city);
+
+        if (show && show[ttHit.field_key]) {
+          const lbl = ttHit.label || (String(ttHit.field_key).replace(/_/g,' ').replace(/\b\w/g, m => m.toUpperCase()));
+          const tz  = show.timezone ? ` ${show.timezone}` : '';
+          return {
+            type: 'schedule',
+            text: `${lbl} for ${city} (${show.venue_name || 'TBA'}) on ${show.date || 'TBA'}: ${show[ttHit.field_key]}${tz}`
+          };
+        } else {
+          const lbl = ttHit.label || 'that time';
+          return { type: 'fallback', text: `I couldn’t find ${lbl} for ${city} on the next show. If there’s a later date or a different city, try that.` };
+        }
+      }
+      // If not a time-term or no hit, fall through to glossary path
+    } catch (e) {
+      // On error, fall through to glossary path
+      console.warn('[TimeTerms] priority block error:', e && e.message);
+    }
+// Hard intercept for time-terms
     try {
       const ttHit = intent && intent.entities && intent.entities.term_id ? await __resolveByTermId(intent.entities.term_id) : null;
       if (ttHit) {
