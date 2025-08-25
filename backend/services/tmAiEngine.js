@@ -125,6 +125,7 @@ class TmAiEngine {
   async loadTerms() {
     this.industryTerms = await getTermIds();
     console.log(`Loaded ${this.industryTerms.length} industry terms from the database.`);
+    this.buildRouterHints();
   }
 
   // Method to asynchronously load cities from the CSV data
@@ -187,6 +188,26 @@ class TmAiEngine {
   return out;
   }
 
+  buildRouterHints() {
+    // Use only human-word terms as hints (ignore IDs like #604001).
+    const wordy = (this.industryTerms || [])
+      .filter(t => /^[a-z]/.test(t))
+      .map(t => t.trim().toLowerCase())
+      .filter(Boolean);
+
+    // Dedupe
+    const seen = new Set();
+    const hints = [];
+    for (const w of wordy) {
+      if (!seen.has(w)) { seen.add(w); hints.push(w); }
+    }
+
+    // Sort by length desc for greedy matching
+    hints.sort((a, b) => b.length - a.length);
+    this.routerHints = hints;
+
+    console.log(`[TmAiEngine] Router hints ready: ${this.routerHints.length} terms`);
+  }
   /** Return the first show matching a city (case-insensitive). */
   async getShowByCity(city) {
     if (!city) return null;
@@ -284,6 +305,13 @@ class TmAiEngine {
     }
 
     const q = normalized || "";
+
+    // Try to infer a human term from DB-derived router hints when missing
+    if (!term && this.routerHints && timeLike && city) {
+      for (const h of this.routerHints) {
+        if (q.includes(h)) { term = h; break; }
+      }
+    }
 
     // --- Only route to travel if the message actually mentions flights ---
     const mentionsFlight = /\bflight(s)?\b/.test(q);
