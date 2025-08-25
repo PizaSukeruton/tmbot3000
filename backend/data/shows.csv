@@ -1,7 +1,7 @@
 show_id,date,venue_id,venue_name,city,state,country,doors_time,show_time,soundcheck_time,load_in_time,load_out_time,curfew_time,lobby_call_time,departure_time,airport_call_time,band_call_time,checkout_time,crew_call_time,set_length,set_times,ticket_status,timezone
 #605001,2025-08-20,#606001,The Forum,Melbourne,VIC,Australia,19:00,20:00,15:30,12:00,,,,,,,,,,,
 #605002,2025-08-22,#606002,Sydney Opera House,Sydney,NSW,Australia,18:30,19:30,15:00,11:00,,,,,,,,,,,
-#605003,2025-08-25,#606003,Brisbane Entertainment Centre,Brisbane,QLD,Australia,19:00,20:00,16:00,12:30,23:30,23:00,14:30,09:30,07:45,16:00,10:00,13:00,75m,20:00–21:15,23:30,23:00
+#605003,2025-08-25,#606003,Brisbane Entertainment Centre,Brisbane,QLD,Australia,19:00,20:00,16:00,12:30,23:30,23:00,14:30,09:30,07:45,16:00,10:00,13:00,75m,20:00–21:15,Sold Out,Australia/Brisbane
 #605004,2025-08-27,#606004,Adelaide Entertainment Centre,Adelaide,SA,Australia,19:00,20:00,15:30,12:00,,,,,,,,,,,
 #605005,2025-08-29,#606005,Perth Arena,Perth,WA,Australia,19:00,20:00,15:00,11:30,,,,,,,,,,,
 #605006,2025-09-01,#606006,Rod Laver Arena,Melbourne,VIC,Australia,18:00,19:00,14:30,10:00,,,,,,,,,,,
