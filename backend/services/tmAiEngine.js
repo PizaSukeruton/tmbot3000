@@ -446,7 +446,7 @@ class TmAiEngine {
         // Term Lookup now routed through parse -> retrieve -> generate pipeline
         case "term_lookup": {
       try {
-        const q = String((params && params.message && params.message.content) || (params && params.q) || "").toLowerCase();
+        const q = String(message || "").toLowerCase();
         const timeLike = /\bwhat\s+time\b|\btime\s+for\b|\bon\s*stage\b|\bsoundcheck\b|\bdoors\b|\bcurfew\b/.test(q);
         if (timeLike && this.parseCityAndTerm) {
           const parsed = this.parseCityAndTerm(q);
@@ -473,7 +473,7 @@ class TmAiEngine {
           const locale = process.env.LOCALE || "en-AU";
       // Fast-path: time-like question + city → pull actual show time instead of glossary definition
       try {
-        const q = String(params?.message?.content || params?.q || "").toLowerCase();
+        const q = String(message || "").toLowerCase();
         const timeLike = /\bwhat\s+time\b|\btime\s+for\b|\bon\s*stage\b|\bsoundcheck\b|\bdoors\b|\bcurfew\b/.test(q);
         if (timeLike && this.parseCityAndTerm) {
           const { city, term } = this.parseCityAndTerm(q);
