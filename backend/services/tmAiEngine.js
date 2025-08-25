@@ -445,7 +445,58 @@ class TmAiEngine {
 
         // Term Lookup now routed through parse -> retrieve -> generate pipeline
         case "term_lookup": {
+      try {
+        const q = String((params && params.message && params.message.content) || (params && params.q) || "").toLowerCase();
+        const timeLike = /\bwhat\s+time\b|\btime\s+for\b|\bon\s*stage\b|\bsoundcheck\b|\bdoors\b|\bcurfew\b/.test(q);
+        if (timeLike && this.parseCityAndTerm) {
+          const parsed = this.parseCityAndTerm(q);
+          const city = parsed && parsed.city;
+          const term = parsed && parsed.term;
+          if (city && term && this.resolveTermToField && this.getNextShowByCity) {
+            const field = await this.resolveTermToField(term);
+            if (field) {
+              const show = await this.getNextShowByCity(city);
+              if (show && Object.prototype.hasOwnProperty.call(show, field)) {
+                const val = show[field];
+                if (val) {
+                  const when = String(val);
+                  const vname = show.venue_name || show.venue || "venue";
+                  const date  = show.date || show.show_date || "";
+                  const tz    = show.timezone || show.tz || "";
+                  return { type: "schedule", text: `Soundcheck time for ${city} (${vname}) on ${date}: ${when} ${tz}` };
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {}
           const locale = process.env.LOCALE || "en-AU";
+      // Fast-path: time-like question + city → pull actual show time instead of glossary definition
+      try {
+        const q = String(params?.message?.content || params?.q || "").toLowerCase();
+        const timeLike = /\bwhat\s+time\b|\btime\s+for\b|\bon\s*stage\b|\bsoundcheck\b|\bdoors\b|\bcurfew\b/.test(q);
+        if (timeLike && this.parseCityAndTerm) {
+          const { city, term } = this.parseCityAndTerm(q);
+          if (city && term && this.resolveTermToField && this.getNextShowByCity) {
+            const field = await this.resolveTermToField(term);
+            if (field) {
+              const show = await this.getNextShowByCity(city);
+              if (show && Object.prototype.hasOwnProperty.call(show, field)) {
+                const val = show[field];
+                if (val) {
+                  const when = String(val);
+                  const vname = show.venue_name || show.venue || "venue";
+                  const date  = show.date || show.show_date || "";
+                  const tz    = show.timezone || show.tz || "";
+                  return { type: "schedule", text: `Soundcheck time for ${city} (${vname}) on ${date}: ${when} ${tz}` };
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // swallow and fall back to glossary path
+      }
 
           // 1) Parse message into { verb, entities }
           const parsed = this.parseMessage(message);
@@ -661,3 +712,113 @@ function formatUpcomingFlights(limit = 10, opts = {}) {
   return out;
 }
 
+
+// ==== Appended helper methods (prototype patch; no anchors needed) ====
+// parseCityAndTerm: extract {city, term} from user text (e.g., "what time is soundcheck in brisbane")
+if (typeof TmAiEngine !== "undefined" && TmAiEngine.prototype) {
+  TmAiEngine.prototype.parseCityAndTerm = function(q) {
+    const text = String(q || "").toLowerCase();
+    const cities = (this.cities || []).map(c => String(c).toLowerCase()).filter(Boolean);
+    let foundCity = null;
+    for (const c of cities) {
+      if (text.includes(c)) { foundCity = c; break; }
+    }
+    let term = text
+      .replace(/what\s+time\s+(is|for|do\s+we\s+have|does\s+.*\s+start)\s*/g, "")
+      .replace(/\?+$/,"");
+    if (foundCity) term = term.replace(foundCity, "").trim();
+    term = term.replace(/\b(in|at|the)\b/g, " ").replace(/\s+/g, " ").trim();
+    return { city: foundCity, term };
+  };
+
+  // resolveTermToField: map "soundcheck"/"load in"/"doors"/"on stage" → best show field.
+  // Data-driven: derives candidates from the first show object keys at call time.
+  TmAiEngine.prototype.resolveTermToField = async function(term) {
+    const t = String(term || "").toLowerCase().trim();
+    if (!t) return null;
+
+    // Try to access the shared data source that exposes getShows()
+    const ds = (this && this.dataSource) || (typeof dataSource !== "undefined" ? dataSource : null);
+    let first = null;
+    try {
+      if (ds && ds.getShows) {
+        const { shows = [] } = await ds.getShows({});
+        first = shows && shows[0];
+      }
+    } catch (e) {
+      // swallow; we'll just fall back to alias-only if needed
+    }
+
+    const candidates = new Set();
+    if (first && typeof first === "object") {
+      for (const k of Object.keys(first)) {
+        const nk = String(k).toLowerCase();
+        if (/_time$/.test(nk) || /_(name|venue|location)$/.test(nk) || nk === "venue" || nk === "venue_name") {
+          const base = nk.replace(/_(time|name)$/,"").replace(/_/g, " ").trim();
+          if (base) candidates.add(base);
+          // also include the raw key for *_time preference
+          candidates.add(nk);
+        }
+      }
+    }
+
+    const ALIASES = {
+      "soundcheck": ["soundcheck_time","sound check","sound-check"],
+      "load in": ["load_in_time","loadin","load-in","load in"],
+      "loadout": ["load_out_time","load out","load-out","loadout","load out time"],
+      "on stage": ["show_time","onstage","on-stage","on stage time","onstage time"],
+      "doors": ["doors_time","door time","doors open","doors-open","doors time"],
+      "show": ["show_time","set time","settime","set"],
+      "curfew": ["curfew_time","curfew time"]
+    };
+
+    for (const [k, arr] of Object.entries(ALIASES)) {
+      if (t.includes(k)) for (const a of arr) candidates.add(a);
+    }
+
+    const scored = [];
+    for (const c of candidates) {
+      const cNorm = String(c).toLowerCase();
+      let score = 0;
+      if (cNorm === t) score = 100;
+      else if (cNorm.startsWith(t)) score = 80;
+      else if (t.startsWith(cNorm)) score = 75;
+      else if (cNorm.includes(t) || t.includes(cNorm)) score = 60;
+      if (/_time$/.test(cNorm)) score += 15; // time fields preferred
+      scored.push({ field: c, score });
+    }
+    scored.sort((a,b)=>b.score - a.score);
+    const best = scored[0];
+    if (!best || best.score < 50) return null;
+
+    let f = best.field.replace(/\s+/g, "_");
+    if (!/_time$/.test(f) && /(time|doors|show|curfew|load[_-]?(in|out)|soundcheck|on[_-]?stage)/.test(f)) {
+      if (!/_time$/.test(f)) f = f.replace(/_?(time)?$/, "_time");
+    }
+    return f;
+  };
+}
+
+// Return the next (earliest) show for a given city (case-insensitive).
+// Prototype patch so we don't depend on class location.
+if (typeof TmAiEngine !== "undefined" && TmAiEngine.prototype) {
+  TmAiEngine.prototype.getNextShowByCity = async function(cityLower) {
+    const ds = (this && this.dataSource) || (typeof dataSource !== "undefined" ? dataSource : null);
+    try {
+      const { shows = [] } = ds && ds.getShows ? await ds.getShows({}) : { shows: [] };
+      const target = String(cityLower || "").toLowerCase();
+      let best = null;
+      for (const s of shows) {
+        const c = String(s.city || s.venue_city || "").toLowerCase();
+        if (c !== target) continue;
+        const when = new Date(s.date || s.show_date || 0);
+        if (!best) { best = s; continue; }
+        const bWhen = new Date(best.date || best.show_date || 0);
+        if (when < bWhen) best = s;
+      }
+      return best;
+    } catch (e) {
+      return null;
+    }
+  };
+}
